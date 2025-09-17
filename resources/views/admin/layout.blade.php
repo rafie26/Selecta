@@ -78,10 +78,25 @@
                             <i class="fas fa-users me-2"></i>
                             Users
                         </a>
-                        <a class="nav-link {{ request()->routeIs('admin.bookings*') ? 'active' : '' }}" href="{{ route('admin.bookings') }}">
-                            <i class="fas fa-calendar-check me-2"></i>
-                            Bookings
-                        </a>
+                        <!-- Bookings Dropdown -->
+                        <div class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.bookings*') || request()->routeIs('admin.hotel-bookings') || request()->routeIs('admin.ticket-bookings') ? 'active' : '' }}" 
+                               href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-calendar-check me-2"></i>
+                                Bookings
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item {{ request()->routeIs('admin.bookings') ? 'active' : '' }}" href="{{ route('admin.bookings') }}">
+                                    <i class="fas fa-list me-2"></i>Semua Bookings
+                                </a></li>
+                                <li><a class="dropdown-item {{ request()->routeIs('admin.hotel-bookings') ? 'active' : '' }}" href="{{ route('admin.hotel-bookings') }}">
+                                    <i class="fas fa-hotel me-2"></i>Hotel Bookings
+                                </a></li>
+                                <li><a class="dropdown-item {{ request()->routeIs('admin.ticket-bookings') ? 'active' : '' }}" href="{{ route('admin.ticket-bookings') }}">
+                                    <i class="fas fa-ticket-alt me-2"></i>Ticket Bookings
+                                </a></li>
+                            </ul>
+                        </div>
                         <a class="nav-link {{ request()->routeIs('admin.hotels') ? 'active' : '' }}" href="{{ route('admin.hotels') }}">
                             <i class="fas fa-hotel me-2"></i>
                             Hotels

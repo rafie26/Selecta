@@ -50,6 +50,16 @@ class Booking extends Model
         return $this->hasMany(Visitor::class);
     }
 
+    public function roomBookings(): HasMany
+    {
+        return $this->hasMany(RoomBooking::class);
+    }
+
+    public function roomBooking()
+    {
+        return $this->hasOne(RoomBooking::class);
+    }
+
     public function generateBookingCode(): string
     {
         return 'BK-' . date('Ymd') . '-' . str_pad($this->id, 4, '0', STR_PAD_LEFT);

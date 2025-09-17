@@ -34,6 +34,11 @@ class PaymentController extends Controller
 
     public function pay(Request $request)
     {
+        // Check if this is a hotel booking payment
+        if ($request->has('booking_id') && $request->has('booking_type') && $request->booking_type === 'hotel') {
+            return $this->payHotelBooking($request);
+        }
+
         $request->validate([
             'visit_date' => 'required|date|after:today',
             'packages' => 'required|array',
@@ -156,6 +161,92 @@ class PaymentController extends Controller
         }
     }
 
+    public function payHotelBooking(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
+
+        $user = Auth::user();
+        $booking = Booking::with(['roomBooking.roomType'])->findOrFail($request->booking_id);
+
+        // Verify booking belongs to user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Booking tidak ditemukan atau tidak memiliki akses.'
+            ], 403);
+        }
+
+        // Check if booking is already paid
+        if ($booking->payment_status === 'paid') {
+            return response()->json([
+                'error' => true,
+                'message' => 'Booking sudah dibayar.'
+            ], 400);
+        }
+
+        try {
+            // Prepare Midtrans transaction details
+            $orderId = 'HOTEL-' . $booking->booking_code . '-' . time();
+            $booking->midtrans_order_id = $orderId;
+            $booking->save();
+
+            // Prepare item details for hotel booking
+            $roomBooking = $booking->roomBooking;
+            $itemDetails = [
+                [
+                    'id' => 'hotel-room-' . $roomBooking->room_type_id,
+                    'price' => $roomBooking->room_rate_per_night,
+                    'quantity' => $roomBooking->number_of_rooms * $roomBooking->nights,
+                    'name' => $roomBooking->roomType->name . ' - ' . $roomBooking->nights . ' malam',
+                    'category' => 'Hotel Room'
+                ]
+            ];
+
+            // Prepare transaction data
+            $transactionDetails = [
+                'order_id' => $orderId,
+                'gross_amount' => $booking->total_amount,
+            ];
+
+            $customerDetails = [
+                'first_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+            ];
+
+            $params = [
+                'transaction_details' => $transactionDetails,
+                'customer_details' => $customerDetails,
+                'item_details' => $itemDetails,
+                'callbacks' => [
+                    'finish' => route('payment.success', $booking->id),
+                ]
+            ];
+
+            // Get Snap Token
+            $snapToken = Snap::getSnapToken($params);
+
+            return response()->json([
+                'snap_token' => $snapToken,
+                'booking_id' => $booking->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Hotel payment processing failed', [
+                'booking_id' => $booking->id,
+                'error_message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Terjadi kesalahan internal. Silakan coba lagi nanti.'
+            ], 500);
+        }
+    }
 
     public function notificationHandler(Request $request)
     {

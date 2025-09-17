@@ -45,6 +45,10 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
     Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.post');
     
+    // Admin Registration (separate route)
+    Route::get('/admin/register', [AdminController::class, 'showRegisterForm'])->name('admin.register');
+    Route::post('/admin/register', [AdminController::class, 'register'])->name('admin.register.post');
+    
     // Google OAuth
     Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
     Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback'])->name('auth.google.callback');
@@ -58,7 +62,8 @@ Route::middleware(['auth'])->group(function () {
     
     // Booking (perlu login)
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
-    Route::get('/my-bookings', [BookingController::class, 'myBookings'])->name('bookings.my');
+    Route::get('/my-bookings', [BookingController::class, 'myBookings'])->name('booking.my-bookings');
+    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
     
     // Payment routes
     Route::post('/payment', [PaymentController::class, 'pay'])->name('payment');
@@ -116,7 +121,10 @@ Route::prefix('api')->name('api.')->group(function () {
     Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
     
     // Get hotel availability
-    Route::post('/hotels/{id}/availability', [HotelController::class, 'checkAvailability'])->name('hotels.availability');
+    Route::post('/hotels/availability', [HotelController::class, 'checkAvailability'])->name('hotels.availability');
+    
+    // Book hotel room
+    Route::post('/hotels/book', [HotelController::class, 'bookRoom'])->name('hotels.book');
     
     // Get attraction pricing
     Route::get('/attractions/{id}/pricing', [AttractionController::class, 'pricing'])->name('attractions.pricing');
@@ -132,12 +140,18 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::get('/bookings', [AdminController::class, 'bookings'])->name('bookings');
+    Route::get('/hotel-bookings', [AdminController::class, 'hotelBookings'])->name('hotel-bookings');
+    Route::get('/ticket-bookings', [AdminController::class, 'ticketBookings'])->name('ticket-bookings');
     Route::get('/bookings/{id}/detail', [AdminController::class, 'bookingDetail'])->name('bookings.detail');
     Route::post('/bookings/{id}/update-status', [AdminController::class, 'updateBookingStatus'])->name('bookings.update-status');
     Route::delete('/bookings/{id}', [AdminController::class, 'deleteBooking'])->name('bookings.delete');
 
     // Clean design: Hotels, Tickets, Restaurants
     Route::get('/hotels', [AdminController::class, 'hotels'])->name('hotels');
+    Route::post('/room-types', [AdminController::class, 'storeRoomType'])->name('room-types.store');
+    Route::put('/room-types/{id}', [AdminController::class, 'updateRoomType'])->name('room-types.update');
+    Route::delete('/room-types/{id}', [AdminController::class, 'deleteRoomType'])->name('room-types.delete');
+    Route::post('/room-types/{id}/adjust-availability', [AdminController::class, 'adjustAvailableRooms'])->name('room-types.adjust-availability');
     Route::get('/packages', [AdminController::class, 'packages'])->name('packages');
     Route::get('/restaurants', [AdminController::class, 'restaurants'])->name('restaurants');
 

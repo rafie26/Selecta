@@ -27,11 +27,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Total Hotels</h6>
-                        <h2 class="mb-0">{{ number_format($totalHotels) }}</h2>
+                        <h6 class="card-title">Kamar Tersedia</h6>
+                        <h2 class="mb-0 text-success">{{ number_format($totalAvailableRooms) }}</h2>
+                        <small class="text-muted">dari {{ number_format($totalRooms) }} total kamar</small>
                     </div>
                     <div class="align-self-center">
-                        <i class="fas fa-hotel fa-2x text-primary"></i>
+                        <i class="fas fa-bed fa-2x text-success"></i>
                     </div>
                 </div>
             </div>
@@ -39,6 +40,23 @@
     </div>
 
     
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Kamar Terisi</h6>
+                        <h2 class="mb-0 text-warning">{{ number_format($occupiedRooms) }}</h2>
+                        <small class="text-muted">kamar sedang digunakan</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-door-closed fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stat-card">
@@ -58,6 +76,90 @@
 </div>
 
 <div class="row">
+    <!-- Room Availability Details -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bed me-2"></i>
+                    Ketersediaan Kamar per Tipe
+                </h5>
+            </div>
+            <div class="card-body">
+                @if($roomTypesAvailability->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tipe Kamar</th>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-center">Tersedia</th>
+                                    <th class="text-center">Terisi</th>
+                                    <th class="text-center">Tingkat Hunian</th>
+                                    <th class="text-center">Harga/Malam</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($roomTypesAvailability as $room)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-2">
+                                                    <i class="fas fa-door-open text-primary"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>{{ $room['name'] }}</strong>
+                                                    @if(!$room['is_active'])
+                                                        <span class="badge bg-secondary ms-2">Nonaktif</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark">{{ $room['total_rooms'] }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success">{{ $room['available_rooms'] }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning">{{ $room['occupied_rooms'] }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <div class="progress me-2" style="width: 60px; height: 8px;">
+                                                    <div class="progress-bar @if($room['occupancy_rate'] >= 90) bg-danger @elseif($room['occupancy_rate'] >= 70) bg-warning @else bg-success @endif" style="width: {{ $room['occupancy_rate'] }}%">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">{{ $room['occupancy_rate'] }}%</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <small class="text-muted">Rp {{ number_format($room['price_per_night'], 0, ',', '.') }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($room['status'] == 'full')
+                                                <span class="badge bg-danger">Penuh</span>
+                                            @elseif($room['status'] == 'low')
+                                                <span class="badge bg-warning">Terbatas</span>
+                                            @else
+                                                <span class="badge bg-success">Tersedia</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-bed fa-2x mb-2"></i>
+                        <p class="mb-0">Belum ada tipe kamar yang terdaftar</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
 
     <!-- Recent Bookings -->
     <div class="col-lg-4 mb-4">

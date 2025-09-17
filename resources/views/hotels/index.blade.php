@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Selecta - Booking Kamar</title>
+    <title>Hotel Selecta - Pemesanan Kamar</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="user-authenticated" content="{{ Auth::check() ? 'true' : 'false' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Midtrans Snap -->
+    <script type="text/javascript" src="{{ config('midtrans.snap_url') }}" data-client-key="{{ config('midtrans.client_key') }}"></script>
 
     <style>
         * {
@@ -263,22 +268,40 @@
             font-size: 1.5rem;
             font-weight: 700;
             color: #1f2937;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
 
+        /* FIXED: Compact booking info layout - 2x2 grid */
         .booking-info {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-            flex-wrap: wrap;
-            font-size: 0.9rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            font-size: 0.85rem;
             color: #6b7280;
+            background: #ffffff;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
         }
 
-        .booking-info > span {
+        .booking-info-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            padding: 0.5rem 0.8rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            font-weight: 500;
+            white-space: nowrap;
+            justify-content: flex-start;
+        }
+
+        .booking-info-item .icon {
+            font-size: 0.9rem;
+            color: #3b82f6;
+            flex-shrink: 0;
         }
 
         /* Room Card - Updated Layout */
@@ -432,6 +455,37 @@
             transform: translateY(-1px);
         }
 
+        .details-book-btn.disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .details-book-btn.disabled:hover {
+            background: #9ca3af;
+            transform: none;
+        }
+
+        .room-card.unavailable {
+            opacity: 0.7;
+        }
+
+        .unavailable-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(220, 38, 38, 0.8);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 6px;
+        }
+
         /* Room Details Sidebar */
         .room-details-sidebar {
             position: fixed;
@@ -554,34 +608,6 @@
             position: sticky;
             top: 100px;
             height: fit-content;
-        }
-
-        .special-offers {
-            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-            border: 1px solid #a7f3d0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .offers-title {
-            color: #047857;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .offer-item {
-            color: #065f46;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            padding-left: 1rem;
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         }
 
         .cart-summary {
@@ -758,6 +784,77 @@
             cursor: not-allowed;
         }
 
+        /* Mobile Cart - Sticky Bottom */
+        .mobile-cart {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .mobile-cart-header {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .mobile-cart-title {
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mobile-cart-total {
+            font-weight: 700;
+            color: #16a34a;
+        }
+
+        .mobile-cart-arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .mobile-cart.expanded .mobile-cart-arrow {
+            transform: rotate(180deg);
+        }
+
+        .mobile-cart-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .mobile-cart.expanded .mobile-cart-content {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .mobile-cart-inner {
+            padding: 1rem;
+        }
+
+        .mobile-cart-badge {
+            background: #dc2626;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 0.5rem;
+        }
+
         /* Loading & Messages */
         .loading-message {
             text-align: center;
@@ -825,6 +922,7 @@
             .main-content {
                 grid-template-columns: 1fr;
                 padding: 1rem;
+                padding-bottom: 120px;
             }
 
             .booking-form {
@@ -848,20 +946,33 @@
 
             .booking-info {
                 flex-direction: column;
-                gap: 0.5rem;
-                align-items: flex-start;
+                gap: 0.8rem;
+                align-items: stretch;
+                padding: 1rem;
+            }
+
+            .booking-info-item {
+                justify-content: center;
+                padding: 0.5rem;
             }
 
             .room-details-sidebar {
                 width: 100%;
                 right: -100%;
             }
+
+            .sidebar {
+                display: none;
+            }
+
+            .mobile-cart {
+                display: block;
+            }
         }
     </style>
 </head>
 <body>
-       @include('components.navbar')
-
+      @include('components.navbar')
     <!-- Hero Section with Full Image Slider -->
     <section class="hero-section">
         <div class="hero-slider">
@@ -887,10 +998,10 @@
     <!-- Hotel Info Section -->
     <section class="hotel-info">
         <div class="hotel-container">
-            <h1 class="hotel-title">Selecta Hotel Batu Malang</h1>
+            <h1 class="hotel-title">Hotel Selecta Batu Malang</h1>
             <div class="hotel-rating">
                 <div class="stars">★★★★</div>
-                <div class="award-badge">Official Website - Best Rate Guarantee</div>
+                <div class="award-badge">Website Resmi - Jaminan Harga Terbaik</div>
             </div>
             <div class="hotel-location">
                 <i class="fas fa-map-marker-alt icon"></i>
@@ -920,25 +1031,27 @@
                 <div class="form-group">
                     <label class="form-label">
                         <i class="fas fa-users icon"></i>
-                        Guests
+                        Tamu
                     </label>
                     <select class="form-input" id="guests-select">
-                        <option value="2">2 Adults</option>
-                        <option value="1">1 Adult</option>
-                        <option value="3">3 Adults</option>
-                        <option value="4">4 Adults</option>
-                        <option value="5">5+ Adults</option>
+                        <option value="2">2 Dewasa</option>
+                        <option value="1">1 Dewasa</option>
+                        <option value="3">3 Dewasa</option>
+                        <option value="4">4 Dewasa</option>
+                        <option value="5">5+ Dewasa</option>
                     </select>
                 </div>
+                <!-- Hidden input for number of rooms - always 1 -->
+                <input type="hidden" name="number_of_rooms" value="1">
                 <div class="form-group">
                     <label class="form-label">
                         <i class="fas fa-tag icon"></i>
-                        Promo Code
+                        Kode Promo
                     </label>
-                    <input type="text" class="form-input" placeholder="Enter promo code">
+                    <input type="text" class="form-input" placeholder="Masukkan kode promo">
                 </div>
                 <div class="form-group">
-                    <button type="button" class="update-btn" onclick="updateAvailability()">CHECK AVAILABILITY</button>
+                    <button type="button" class="update-btn" onclick="updateAvailability()">CEK KETERSEDIAAN</button>
                 </div>
             </form>
         </div>
@@ -949,23 +1062,23 @@
         <!-- Rooms Section -->
         <div class="rooms-section">
             <div class="section-header">
-                <h2 class="section-title">Select the room that suits you best</h2>
+                <h2 class="section-title">Pilih kamar yang paling sesuai untuk Anda</h2>
                 <div class="booking-info">
                     <span>
                         <i class="fas fa-home icon"></i>
-                        ROOM 1 OF 1
+                        KAMAR 1 DARI 1
                     </span>
                     <span>
                         <i class="fas fa-users icon"></i>
-                        2 ADULTS
+                        2 DEWASA
                     </span>
                     <span>
                         <i class="fas fa-calendar-alt icon"></i>
-                        <span id="display-dates">MON 11 AUG 2025 ➔ TUE 12 AUG 2025</span>
+                        <span id="display-dates">SEN 11 AGS 2025 ➔ SEL 12 AGS 2025</span>
                     </span>
                     <span>
                         <i class="fas fa-moon icon"></i>
-                        <span id="display-nights">1 NIGHT</span>
+                        <span id="display-nights">1 MALAM</span>
                     </span>
                 </div>
             </div>
@@ -981,44 +1094,48 @@
 
         <!-- Sidebar -->
         <div class="sidebar">
-            <!-- Special Offers -->
-            <div class="special-offers">
-                <h3 class="offers-title">
-                    <i class="fas fa-star icon"></i>
-                    Special Offers
-                </h3>
-                <div class="offer-item">
-                    <i class="fas fa-gift icon"></i>
-                    Book 3 nights, get 1 night free
-                </div>
-                <div class="offer-item">
-                    <i class="fas fa-gift icon"></i>
-                    Free spa treatment for couples
-                </div>
-                <div class="offer-item">
-                    <i class="fas fa-gift icon"></i>
-                    Complimentary airport transfer
-                </div>
-                <div class="offer-item">
-                    <i class="fas fa-gift icon"></i>
-                    Early check-in available
-                </div>
-            </div>
-
             <!-- Cart Summary -->
             <div class="cart-summary">
                 <h3 class="cart-title">
                     <i class="fas fa-shopping-cart icon"></i>
-                    Your Selection
+                    Pilihan Anda
                 </h3>
                 <div id="cart-content">
                     <div class="empty-cart">
                         <div class="empty-cart-icon">
                             <i class="fas fa-shopping-bag icon"></i>
                         </div>
-                        <p>No rooms selected yet</p>
-                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Choose your perfect room above</p>
+                        <p>Belum ada kamar yang dipilih</p>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Pilih kamar idaman Anda di atas</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Cart - Sticky Bottom for Mobile -->
+    <div class="mobile-cart" id="mobileCart">
+        <div class="mobile-cart-header" onclick="toggleMobileCart()">
+            <div class="mobile-cart-title">
+                <i class="fas fa-shopping-cart icon"></i>
+                Pilihan Anda
+                <span class="mobile-cart-badge" id="mobile-cart-badge" style="display: none;">0</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="mobile-cart-total" id="mobile-cart-total">Rp 0</div>
+                <div class="mobile-cart-arrow">
+                    <i class="fas fa-chevron-up icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-cart-content">
+            <div class="mobile-cart-inner" id="mobile-cart-content">
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">
+                        <i class="fas fa-shopping-bag icon"></i>
+                    </div>
+                    <p>Belum ada kamar yang dipilih</p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem;">Pilih kamar idaman Anda di atas</p>
                 </div>
             </div>
         </div>
@@ -1027,7 +1144,7 @@
     <!-- Room Details Sidebar -->
     <div class="room-details-sidebar" id="roomDetailsSidebar">
         <div class="sidebar-header">
-            <h3 id="sidebar-room-name">Room Details</h3>
+            <h3 id="sidebar-room-name">Detail Kamar</h3>
             <button class="close-btn" onclick="closeSidebar()">✕</button>
         </div>
         <div class="sidebar-content" id="sidebar-content">
@@ -1039,129 +1156,17 @@
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
     <script>
-        // Updated room data for Selecta Hotel
-        const roomsData = [
-            {
-                id: 1,
-                name: "Superior",
-                image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "24 m²",
-                maxGuests: 2,
-                description: "Superior room with modern amenities and comfortable furnishing. Perfect for couples seeking comfort and relaxation.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Free WiFi"],
-                basePrice: 600000,
-                availableRooms: 5,
-                rates: [
-                    {
-                        type: "Best Available Rate",
-                        price: 600000,
-                        features: "Best Available Rate, Non-refundable booking with instant confirmation",
-                        note: "Not refundable",
-                        breakfast: true
-                    }
-                ]
-            },
-            {
-                id: 2,
-                name: "Suite",
-                image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "30 m²",
-                maxGuests: 2,
-                description: "Spacious suite with separate living area and premium amenities. Ideal for extended stays and business travelers.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Mini Bar", "Free WiFi"],
-                basePrice: 700000,
-                availableRooms: 3,
-                rates: [
-                    {
-                        type: "Standard Rate",
-                        price: 700000,
-                        features: "Free cancellation, includes breakfast, room service available",
-                        note: "",
-                        breakfast: true
-                    }
-                ]
-            },
-            {
-                id: 3,
-                name: "Family Suite",
-                image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "45 m²",
-                maxGuests: 6,
-                description: "Perfect for families with connecting rooms and kids-friendly amenities. Spacious layout with mountain views.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Coffee Maker", "Refrigerator", "Free WiFi"],
-                basePrice: 1000000,
-                availableRooms: 2,
-                rates: [
-                    {
-                        type: "Family Package",
-                        price: 1000000,
-                        features: "Free breakfast for family, kids activities included, connecting rooms available",
-                        note: "",
-                        breakfast: true
-                    }
-                ]
-            },
-            {
-                id: 4,
-                name: "Executive Suite",
-                image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "50 m²",
-                maxGuests: 2,
-                description: "Luxurious executive suite with premium facilities and exclusive services. Mountain view with private balcony.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Coffee Maker", "Mini Bar", "Balcony", "Free WiFi"],
-                basePrice: 1600000,
-                availableRooms: 1,
-                rates: [
-                    {
-                        type: "Executive Rate",
-                        price: 1600000,
-                        features: "Executive lounge access, premium breakfast, late checkout, complimentary spa access",
-                        note: "",
-                        breakfast: true
-                    }
-                ]
-            },
-            {
-                id: 5,
-                name: "Deluxe",
-                image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "24 m²",
-                maxGuests: 2,
-                description: "Comfortable deluxe room with garden view and modern amenities. Enhanced comfort with premium bedding.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Hair Dryer", "Free WiFi"],
-                basePrice: 750000,
-                availableRooms: 4,
-                rates: [
-                    {
-                        type: "Standard Rate",
-                        price: 750000,
-                        features: "Garden view, free WiFi, complimentary breakfast, daily housekeeping",
-                        note: "",
-                        breakfast: true
-                    }
-                ]
-            },
-            {
-                id: 6,
-                name: "Suite Pool Side",
-                image: "https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                size: "30 m²",
-                maxGuests: 2,
-                description: "Suite with direct pool access and stunning pool views. Perfect for romantic getaways with easy pool access.",
-                amenities: ["Air Conditioning", "Bathroom", "Free Toiletries", "Shower", "Towels", "Linen", "Pool Access", "Mini Bar", "Free WiFi"],
-                basePrice: 800000,
-                availableRooms: 3,
-                rates: [
-                    {
-                        type: "Pool Side Rate",
-                        price: 800000,
-                        features: "Direct pool access, pool view, complimentary breakfast, priority pool service",
-                        note: "",
-                        breakfast: true
-                    }
-                ]
-            }
-        ];
+        // Global variables
+        let roomsData = [];
+        let currentBookingData = {
+            check_in: null,
+            check_out: null,
+            guests: 2,
+            nights: 1
+        };
+        
+        // Authentication status  
+        const isUserLoggedIn = document.querySelector('meta[name="user-authenticated"]').getAttribute('content') === 'true';
 
         // Cart functionality
         let cart = [];
@@ -1203,20 +1208,44 @@
             changeSlide(1);
         }, 5000);
 
-        // Update display dates and nights
+        // Calculate number of nights between dates
+        function calculateNights() {
+            const checkinDate = new Date(document.getElementById('checkin-date').value);
+            const checkoutDate = new Date(document.getElementById('checkout-date').value);
+            
+            if (!checkinDate || !checkoutDate || checkoutDate <= checkinDate) {
+                return 1; // Default to 1 night
+            }
+            
+            const timeDiff = checkoutDate - checkinDate;
+            return Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        }
+
+        // Update display dates and nights with dynamic pricing
         function updateDateDisplay() {
             const checkinDate = new Date(document.getElementById('checkin-date').value);
             const checkoutDate = new Date(document.getElementById('checkout-date').value);
             
-            const options = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' };
-            const checkinFormatted = checkinDate.toLocaleDateString('en-US', options).toUpperCase();
-            const checkoutFormatted = checkoutDate.toLocaleDateString('en-US', options).toUpperCase();
+            // Indonesian day and month names
+            const dayNames = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
+            const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 
+                               'JUL', 'AGS', 'SEP', 'OKT', 'NOV', 'DES'];
             
-            const timeDiff = checkoutDate - checkinDate;
-            const nights = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            const checkinDay = dayNames[checkinDate.getDay()];
+            const checkinMonth = monthNames[checkinDate.getMonth()];
+            const checkoutDay = dayNames[checkoutDate.getDay()];
+            const checkoutMonth = monthNames[checkoutDate.getMonth()];
+            
+            const checkinFormatted = `${checkinDay} ${checkinDate.getDate()} ${checkinMonth} ${checkinDate.getFullYear()}`;
+            const checkoutFormatted = `${checkoutDay} ${checkoutDate.getDate()} ${checkoutMonth} ${checkoutDate.getFullYear()}`;
+            
+            const nights = calculateNights();
             
             document.getElementById('display-dates').textContent = `${checkinFormatted} ➔ ${checkoutFormatted}`;
-            document.getElementById('display-nights').textContent = `${nights} NIGHT${nights > 1 ? 'S' : ''}`;
+            document.getElementById('display-nights').textContent = `${nights} MALAM`;
+            
+            // Update room prices based on number of nights
+            updateRoomPrices();
         }
 
         // Format currency
@@ -1231,21 +1260,59 @@
         // Get amenity icon
         function getAmenityIcon(amenity) {
             const iconMap = {
-                'Air Conditioning': 'fas fa-snowflake',
-                'Bathroom': 'fas fa-shower',
-                'Free Toiletries': 'fas fa-soap',
+                'AC': 'fas fa-snowflake',
+                'Kamar Mandi': 'fas fa-shower',
+                'Perlengkapan Mandi Gratis': 'fas fa-soap',
                 'Shower': 'fas fa-shower',
-                'Towels': 'fas fa-bath',
-                'Linen': 'fas fa-bed',
-                'Coffee Maker': 'fas fa-coffee',
+                'Handuk': 'fas fa-bath',
+                'Seprai': 'fas fa-bed',
+                'Pembuat Kopi': 'fas fa-coffee',
                 'Mini Bar': 'fas fa-wine-glass',
-                'Refrigerator': 'fas fa-cube',
-                'Hair Dryer': 'fas fa-wind',
-                'Balcony': 'fas fa-mountain',
-                'Pool Access': 'fas fa-swimming-pool',
-                'Free WiFi': 'fas fa-wifi'
+                'Kulkas': 'fas fa-cube',
+                'Pengering Rambut': 'fas fa-wind',
+                'Balkon': 'fas fa-mountain',
+                'Akses Kolam': 'fas fa-swimming-pool',
+                'WiFi Gratis': 'fas fa-wifi'
             };
             return iconMap[amenity] || 'fas fa-check-circle';
+        }
+
+        // Update room prices based on selected nights
+        function updateRoomPrices() {
+            const nights = calculateNights();
+            const roomCards = document.querySelectorAll('.room-card');
+            
+            roomCards.forEach((card, index) => {
+                if (index < roomsData.length) {
+                    const room = roomsData[index];
+                    const totalPrice = room.total_price;
+                    
+                    const priceAmount = card.querySelector('.price-amount');
+                    const pricePeriod = card.querySelector('.price-period');
+                    
+                    if (priceAmount && pricePeriod) {
+                        priceAmount.textContent = formatCurrency(totalPrice);
+                        pricePeriod.innerHTML = `untuk <span style="color: #1f2937; font-weight: 600;">${nights}</span> malam`;
+                        
+                        // Add price breakdown if more than 1 night
+                        if (nights > 1) {
+                            const priceBreakdown = card.querySelector('.price-breakdown') || document.createElement('div');
+                            priceBreakdown.className = 'price-breakdown';
+                            priceBreakdown.style.cssText = 'font-size: 0.8rem; color: #6b7280; margin-top: 0.3rem;';
+                            priceBreakdown.innerHTML = `${formatCurrency(room.price_per_night)} x ${nights} malam`;
+                            
+                            if (!card.querySelector('.price-breakdown')) {
+                                pricePeriod.parentNode.appendChild(priceBreakdown);
+                            }
+                        } else {
+                            const existingBreakdown = card.querySelector('.price-breakdown');
+                            if (existingBreakdown) {
+                                existingBreakdown.remove();
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // Render rooms
@@ -1266,60 +1333,76 @@
             }
 
             container.innerHTML = rooms.map(room => {
+                const isAvailable = room.is_available;
+                const availableRooms = room.available_rooms;
+                const totalPrice = room.total_price;
+                const nights = room.nights;
+                const imageUrl = room.images && room.images.length > 0 ? room.images[0] : 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+                
                 return `
-                <div class="room-card">
+                <div class="room-card ${!isAvailable ? 'unavailable' : ''}">
                     <div class="room-main">
-                        <div class="room-image" style="background-image: url('${room.image}')">
+                        <div class="room-image" style="background-image: url('${imageUrl}')">
                             <div class="image-indicator">
                                 <i class="fas fa-camera icon"></i>
-                                1 / 1
+                                ${room.images ? room.images.length : 1} / ${room.images ? room.images.length : 1}
                             </div>
+                            ${!isAvailable ? '<div class="unavailable-overlay">TIDAK TERSEDIA</div>' : ''}
                         </div>
                         
                         <div class="room-details">
                             <h3 class="room-name">${room.name}</h3>
                             <div class="room-specs">
                                 <div class="room-spec">
-                                    <i class="fas fa-expand-arrows-alt icon"></i>
-                                    <span>${room.size}</span>
-                                </div>
-                                <div class="room-spec">
                                     <i class="fas fa-users icon"></i>
-                                    <span>Max guests: ${room.maxGuests}</span>
+                                    <span>Maks tamu: ${room.max_occupancy}</span>
                                 </div>
                             </div>
                             <div class="room-description">
                                 ${room.description}
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.3rem; margin-top: 0.5rem;">
-                                ${room.amenities.slice(0, 4).map(amenity => `
+                                ${room.amenities ? room.amenities.slice(0, 4).map(amenity => `
                                     <div class="room-amenity">
                                         <i class="${getAmenityIcon(amenity)} icon"></i>
                                         <span>${amenity}</span>
                                     </div>
-                                `).join('')}
-                                ${room.amenities.length > 4 ? `
+                                `).join('') : ''}
+                                ${room.amenities && room.amenities.length > 4 ? `
                                     <div class="room-amenity" style="color: #6b7280;">
                                         <i class="fas fa-plus icon"></i>
-                                        <span>+${room.amenities.length - 4} more</span>
+                                        <span>+${room.amenities.length - 4} lainnya</span>
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
                         
                         <div class="room-pricing">
-                            ${room.availableRooms && room.availableRooms <= 3 ? `
-                                <div class="availability-badge ${room.availableRooms === 1 ? 'availability-warning' : ''}">
-                                    ${room.availableRooms === 1 ? 'ONLY 1 LEFT' : `ONLY ${room.availableRooms} LEFT`}
+                            ${isAvailable ? (
+                                availableRooms <= 3 ? `
+                                    <div class="availability-badge ${availableRooms === 1 ? 'availability-warning' : ''}">
+                                        ${availableRooms === 1 ? 'SISA 1 KAMAR' : `SISA ${availableRooms} KAMAR`}
+                                    </div>
+                                ` : ''
+                            ) : `
+                                <div class="availability-badge availability-warning">
+                                    TIDAK TERSEDIA
                                 </div>
-                            ` : ''}
-                            <div class="starting-from">Starting from</div>
+                            `}
+                            <div class="starting-from">Total harga</div>
                             <div class="price-display">
-                                <div class="price-amount">${formatCurrency(room.basePrice)}</div>
-                                <div class="price-period">for <span style="color: #1f2937; font-weight: 600;">1</span> night</div>
+                                <div class="price-amount">${formatCurrency(totalPrice)}</div>
+                                <div class="price-period">untuk <span style="color: #1f2937; font-weight: 600;">${nights}</span> malam</div>
+                                ${nights > 1 ? `
+                                    <div class="price-breakdown" style="font-size: 0.8rem; color: #6b7280; margin-top: 0.3rem;">
+                                        ${formatCurrency(room.price_per_night)} x ${nights} malam
+                                    </div>
+                                ` : ''}
                             </div>
-                            <button class="details-book-btn" onclick="openRoomDetails(${room.id})">
-                                DETAILS & BOOK
+                            <button class="details-book-btn ${!isAvailable ? 'disabled' : ''}" 
+                                    onclick="${isAvailable ? `openRoomDetails(${room.id})` : 'void(0)'}" 
+                                    ${!isAvailable ? 'disabled' : ''}>
+                                ${isAvailable ? 'DETAIL & PESAN' : 'TIDAK TERSEDIA'}
                             </button>
                         </div>
                     </div>
@@ -1328,51 +1411,71 @@
             }).join('');
         }
 
+        // Toggle mobile cart
+        function toggleMobileCart() {
+            const mobileCart = document.getElementById('mobileCart');
+            mobileCart.classList.toggle('expanded');
+        }
+
         // Open room details sidebar
         function openRoomDetails(roomId) {
             const room = roomsData.find(r => r.id === roomId);
             if (!room) return;
 
+            const nights = calculateNights();
             document.getElementById('sidebar-room-name').textContent = room.name;
             
             const content = `
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    <img src="${room.image}" alt="${room.name}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
+                    <img src="${room.images && room.images.length > 0 ? room.images[0] : 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}" alt="${room.name}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
                     <div style="margin-top: 1rem;">
                         <h4 style="margin-bottom: 1rem; color: #1f2937;">${room.description}</h4>
                         <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1rem;">
-                            <span><i class="fas fa-expand-arrows-alt icon"></i> ${room.size}</span>
-                            <span><i class="fas fa-users icon"></i> Max guests: ${room.maxGuests}</span>
+                            <span><i class="fas fa-users icon"></i> Maks tamu: ${room.max_occupancy}</span>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
-                            ${room.amenities.map(amenity => `
+                            ${room.amenities ? room.amenities.map(amenity => `
                                 <div style="color: #059669; font-size: 0.9rem; text-align: left; display: flex; align-items: center; gap: 0.3rem;">
                                     <i class="${getAmenityIcon(amenity)} icon"></i>
                                     ${amenity}
                                 </div>
-                            `).join('')}
+                            `).join('') : ''}
                         </div>
                     </div>
                 </div>
 
-                ${room.rates.map((rate, index) => {
-                    return `
-                    <div class="rate-option ${index === 0 ? 'selected' : ''}" onclick="selectRate(this)" data-rate-index="${index}">
-                        <div class="rate-type">
-                            <span>${rate.type}</span>
-                            <span class="rate-price">${formatCurrency(rate.price)}</span>
+                <div class="rate-option selected" onclick="selectRate(this)" data-rate-index="0">
+                    <div class="rate-type">
+                        <span>Tarif Standar</span>
+                        <div style="text-align: right;">
+                            <div class="rate-price">${formatCurrency(room.total_price)}</div>
+                            ${nights > 1 ? `
+                                <div style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">
+                                    ${formatCurrency(room.price_per_night)} x ${nights} malam
+                                </div>
+                            ` : ''}
                         </div>
-                        <div class="rate-features">
-                            ${rate.features}
-                            ${rate.breakfast ? '<span class="breakfast-badge"><i class="fas fa-utensils icon"></i>Breakfast Included</span>' : ''}
-                        </div>
-                        ${rate.note ? `<div class="rate-note">${rate.note}</div>` : ''}
                     </div>
-                `;
-                }).join('')}
+                    <div class="rate-features">
+                        Tarif terbaik yang tersedia dengan fasilitas lengkap
+                        <span class="breakfast-badge"><i class="fas fa-utensils icon"></i>Sarapan Termasuk</span>
+                    </div>
+                </div>
+
+                <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: center;">
+                    <div style="color: #0369a1; font-weight: 600; margin-bottom: 0.5rem;">
+                        <i class="fas fa-calendar-alt icon"></i> Durasi Menginap
+                    </div>
+                    <div style="color: #0c4a6e; font-size: 1.1rem; font-weight: 700;">
+                        ${nights} Malam
+                    </div>
+                    <div style="color: #0369a1; font-size: 0.9rem; margin-top: 0.3rem;">
+                        Harga sudah dikalikan sesuai durasi menginap
+                    </div>
+                </div>
 
                 <button class="reserve-btn" onclick="makeReservation(${room.id})">
-                    ADD TO CART
+                    PESAN SEKARANG
                 </button>
             `;
 
@@ -1400,14 +1503,19 @@
             const room = roomsData.find(r => r.id === roomId);
             if (!room) return;
 
+            const nights = calculateNights();
             const rate = room.rates[rateIndex];
+            const totalPrice = rate.price * nights;
+            
             const cartItem = {
                 roomId: roomId,
                 rateIndex: rateIndex,
                 roomName: room.name,
                 rateType: rate.type,
-                price: rate.price,
-                quantity: 1,
+                price: totalPrice, // Store total price for the selected nights
+                basePrice: rate.price, // Store base price per night
+                nights: nights, // Store number of nights
+                quantity: 1, // Always 1 room per user
                 breakfast: rate.breakfast
             };
 
@@ -1417,7 +1525,9 @@
             );
 
             if (existingItemIndex > -1) {
-                cart[existingItemIndex].quantity += 1;
+                // Don't increase quantity, just show message that room is already in cart
+                alert('Kamar ini sudah ada di keranjang. Setiap user hanya bisa memesan 1 kamar per tipe.');
+                return;
             } else {
                 cart.push(cartItem);
             }
@@ -1429,21 +1539,30 @@
         // Update cart display
         function updateCartDisplay() {
             const cartContent = document.getElementById('cart-content');
+            const mobileCartContent = document.getElementById('mobile-cart-content');
             
             if (cart.length === 0) {
-                cartContent.innerHTML = `
+                const emptyCartHTML = `
                     <div class="empty-cart">
                         <div class="empty-cart-icon">
                             <i class="fas fa-shopping-bag icon"></i>
                         </div>
-                        <p>No rooms selected yet</p>
-                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Choose your perfect room above</p>
+                        <p>Belum ada kamar yang dipilih</p>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Pilih kamar idaman Anda di atas</p>
                     </div>
                 `;
+                cartContent.innerHTML = emptyCartHTML;
+                mobileCartContent.innerHTML = emptyCartHTML;
+                
+                // Update mobile cart header
+                document.getElementById('mobile-cart-badge').style.display = 'none';
+                document.getElementById('mobile-cart-total').textContent = 'Rp 0';
                 return;
             }
 
             let subtotal = 0;
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
             const cartItemsHTML = cart.map((item, index) => {
                 const itemTotal = item.price * item.quantity;
                 subtotal += itemTotal;
@@ -1452,7 +1571,7 @@
                     <div class="cart-item">
                         <div class="cart-item-header">
                             <div class="cart-room-name">${item.roomName}</div>
-                            <button class="cart-remove-btn" onclick="removeFromCart(${index})" title="Remove item">
+                            <button class="cart-remove-btn" onclick="removeFromCart(${index})" title="Hapus item">
                                 ✕
                             </button>
                         </div>
@@ -1460,14 +1579,13 @@
                             ${item.rateType}
                             ${item.breakfast ? '<i class="fas fa-utensils icon"></i>' : ''}
                         </div>
+                        ${item.nights > 1 ? `
+                            <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">
+                                <i class="fas fa-calendar-alt icon"></i> ${item.nights} malam (${formatCurrency(item.basePrice)} per malam)
+                            </div>
+                        ` : ''}
                         <div class="cart-quantity-controls">
-                            <button class="quantity-btn" onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
-                                −
-                            </button>
-                            <span class="quantity-display">${item.quantity}</span>
-                            <button class="quantity-btn" onclick="updateQuantity(${index}, 1)" ${item.quantity >= 5 ? 'disabled' : ''}>
-                                +
-                            </button>
+                            <span class="quantity-display">1 Kamar</span>
                         </div>
                         <div class="cart-item-price">${formatCurrency(itemTotal)}</div>
                     </div>
@@ -1477,7 +1595,7 @@
             const tax = Math.round(subtotal * 0.1); // 10% tax
             const total = subtotal + tax;
 
-            cartContent.innerHTML = `
+            const fullCartHTML = `
                 <div class="cart-items">
                     ${cartItemsHTML}
                 </div>
@@ -1487,7 +1605,7 @@
                         <span>${formatCurrency(subtotal)}</span>
                     </div>
                     <div class="cart-total-row cart-tax">
-                        <span>Tax & Service:</span>
+                        <span>Pajak & Layanan:</span>
                         <span>${formatCurrency(tax)}</span>
                     </div>
                     <div class="cart-total-row cart-grand-total">
@@ -1496,32 +1614,30 @@
                     </div>
                 </div>
                 <button class="proceed-to-booking" onclick="proceedToBooking()">
-                    PROCEED TO BOOKING
+                    LANJUTKAN PEMESANAN
+                </button>
+                <button class="proceed-to-booking" onclick="proceedToPayment()" style="background: #dc2626; margin-top: 0.5rem;">
+                    BAYAR SEKARANG
                 </button>
             `;
+
+            cartContent.innerHTML = fullCartHTML;
+            mobileCartContent.innerHTML = fullCartHTML;
+            
+            // Update mobile cart header
+            const badge = document.getElementById('mobile-cart-badge');
+            badge.textContent = totalItems;
+            badge.style.display = 'flex';
+            document.getElementById('mobile-cart-total').textContent = formatCurrency(total);
         }
 
-        // Update quantity
-        function updateQuantity(index, change) {
-            if (index < 0 || index >= cart.length) return;
-            
-            cart[index].quantity += change;
-            
-            if (cart[index].quantity <= 0) {
-                cart.splice(index, 1);
-            } else if (cart[index].quantity > 5) {
-                cart[index].quantity = 5;
-            }
-            
-            updateCartDisplay();
-        }
-
-        // Remove from cart
+        // Remove item from cart (since quantity is always 1)
         function removeFromCart(index) {
             if (index < 0 || index >= cart.length) return;
             cart.splice(index, 1);
             updateCartDisplay();
         }
+
 
         // Proceed to booking
         function proceedToBooking() {
@@ -1532,21 +1648,190 @@
             const tax = Math.round(totalAmount * 0.1);
             const grandTotal = totalAmount + tax;
             
-            alert(`🎉 Proceeding to booking!\n\nSummary:\n- ${totalRooms} room(s) selected\n- Total: ${formatCurrency(grandTotal)}\n\nRedirecting to payment page...`);
+            alert(`🎉 Melanjutkan ke pemesanan!\n\nRingkasan:\n- ${totalRooms} kamar dipilih\n- Total: ${formatCurrency(grandTotal)}\n\nMengarahkan ke halaman pembayaran...`);
+        }
+
+        // Proceed to payment (for cart items)
+        async function proceedToPayment() {
+            if (cart.length === 0) {
+                showNotification('Keranjang kosong. Pilih kamar terlebih dahulu.', 'error');
+                return;
+            }
+
+            // Check if user is logged in
+            if (!isUserLoggedIn) {
+                showNotification('Silakan login terlebih dahulu untuk melakukan pemesanan', 'error');
+                setTimeout(() => {
+                    window.location.href = '{{ route("login") }}';
+                }, 2000);
+                return;
+            }
+
+            try {
+                showNotification('Memproses pemesanan...', 'info');
+
+                // Create booking for the first item in cart (simplified for now)
+                const firstItem = cart[0];
+                const room = roomsData.find(r => r.id === firstItem.roomId);
+                
+                if (!room) {
+                    throw new Error('Kamar tidak ditemukan');
+                }
+
+                const response = await fetch('{{ route("api.hotels.book") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        room_type_id: firstItem.roomId,
+                        check_in: currentBookingData.check_in,
+                        check_out: currentBookingData.check_out,
+                        number_of_rooms: 1,
+                        number_of_guests: currentBookingData.guests
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Clear cart after successful booking
+                    cart = [];
+                    updateCartDisplay();
+                    
+                    // Initiate payment immediately
+                    initiateHotelPayment(data.booking.id);
+                } else {
+                    throw new Error(data.message || 'Gagal melakukan pemesanan');
+                }
+            } catch (error) {
+                console.error('Cart payment error:', error);
+                showNotification(error.message || 'Terjadi kesalahan saat memproses pemesanan', 'error');
+            }
         }
 
         // Make reservation
-        function makeReservation(roomId) {
+        async function makeReservation(roomId) {
             const room = roomsData.find(r => r.id === roomId);
-            const selectedRateElement = document.querySelector('.rate-option.selected');
-            
-            if (room && selectedRateElement) {
-                const rateIndex = parseInt(selectedRateElement.dataset.rateIndex) || 0;
-                addToCart(roomId, rateIndex);
+            if (!room) {
+                showNotification('Kamar tidak ditemukan', 'error');
+                return;
+            }
+
+            if (!room.is_available) {
+                showNotification('Kamar tidak tersedia untuk tanggal yang dipilih', 'error');
+                return;
+            }
+
+            // Check if user is logged in
+            if (!isUserLoggedIn) {
+                showNotification('Silakan login terlebih dahulu untuk melakukan pemesanan', 'error');
+                setTimeout(() => {
+                    window.location.href = '{{ route("login") }}';
+                }, 2000);
+                return;
+            }
+
+            // Show loading
+            const reserveBtn = document.querySelector('.reserve-btn');
+            const originalText = reserveBtn.textContent;
+            reserveBtn.disabled = true;
+            reserveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMPROSES...';
+
+            try {
+                const response = await fetch('{{ route("api.hotels.book") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        room_type_id: roomId,
+                        check_in: currentBookingData.check_in,
+                        check_out: currentBookingData.check_out,
+                        number_of_rooms: 1,
+                        number_of_guests: currentBookingData.guests
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Pemesanan berhasil dibuat!', 'success');
+                    closeSidebar();
+                    
+                    // Directly initiate payment without confirmation dialog
+                    setTimeout(() => {
+                        initiateHotelPayment(data.booking.id);
+                    }, 500);
+                    
+                    // Refresh availability
+                    updateAvailability();
+                } else {
+                    throw new Error(data.message || 'Gagal melakukan pemesanan');
+                }
+            } catch (error) {
+                console.error('Booking error:', error);
+                showNotification(error.message || 'Terjadi kesalahan saat melakukan pemesanan', 'error');
+            } finally {
+                reserveBtn.disabled = false;
+                reserveBtn.textContent = originalText;
+            }
+        }
+
+        // Initiate hotel payment
+        async function initiateHotelPayment(bookingId) {
+            try {
+                showNotification('Memproses pembayaran...', 'info');
                 
-                // Show success message
-                const rate = room.rates[rateIndex];
-                showNotification(`Added to cart! ${room.name} - ${rate.type}`, 'success');
+                const response = await fetch('{{ route("payment") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        booking_id: bookingId,
+                        booking_type: 'hotel'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.message || 'Gagal memproses pembayaran');
+                }
+
+                if (data.snap_token) {
+                    // Open Midtrans Snap payment popup
+                    window.snap.pay(data.snap_token, {
+                        onSuccess: function(result) {
+                            showNotification('Pembayaran berhasil!', 'success');
+                            setTimeout(() => {
+                                window.location.href = `/payment/success/${bookingId}`;
+                            }, 2000);
+                        },
+                        onPending: function(result) {
+                            showNotification('Pembayaran sedang diproses...', 'info');
+                            setTimeout(() => {
+                                window.location.href = '/my-bookings';
+                            }, 2000);
+                        },
+                        onError: function(result) {
+                            showNotification('Pembayaran gagal. Silakan coba lagi.', 'error');
+                            console.error('Payment error:', result);
+                        },
+                        onClose: function() {
+                            showNotification('Pembayaran dibatalkan', 'info');
+                        }
+                    });
+                } else {
+                    throw new Error('Token pembayaran tidak ditemukan');
+                }
+            } catch (error) {
+                console.error('Payment initiation error:', error);
+                showNotification(error.message || 'Terjadi kesalahan saat memproses pembayaran', 'error');
             }
         }
 
@@ -1591,21 +1876,29 @@
             }, 3000);
         }
 
-        // Update availability (simulate API call)
-        function updateAvailability() {
+        // Update availability (real API call)
+        async function updateAvailability() {
             const checkinDate = document.getElementById('checkin-date').value;
             const checkoutDate = document.getElementById('checkout-date').value;
             const guests = document.getElementById('guests-select').value;
 
             if (!checkinDate || !checkoutDate) {
-                alert('Silakan pilih tanggal check-in dan check-out');
+                showNotification('Silakan pilih tanggal check-in dan check-out', 'error');
                 return;
             }
 
             if (new Date(checkoutDate) <= new Date(checkinDate)) {
-                alert('Tanggal check-out harus setelah tanggal check-in');
+                showNotification('Tanggal check-out harus setelah tanggal check-in', 'error');
                 return;
             }
+
+            // Update current booking data
+            currentBookingData = {
+                check_in: checkinDate,
+                check_out: checkoutDate,
+                guests: parseInt(guests),
+                nights: calculateNights()
+            };
 
             // Update date display
             updateDateDisplay();
@@ -1618,12 +1911,46 @@
                 </div>
             `;
 
-            // Simulate API delay
-            setTimeout(() => {
-                // Filter rooms based on guest capacity
-                const availableRooms = roomsData.filter(room => room.maxGuests >= parseInt(guests));
-                renderRooms(availableRooms);
-            }, 1500);
+            try {
+                const response = await fetch('{{ route("api.hotels.availability") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        check_in: checkinDate,
+                        check_out: checkoutDate,
+                        guests: guests
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    roomsData = data.room_types;
+                    renderRooms(roomsData);
+                    
+                    if (roomsData.length === 0) {
+                        showNotification('Tidak ada kamar tersedia untuk tanggal yang dipilih', 'info');
+                    }
+                } else {
+                    throw new Error(data.message || 'Gagal memuat data kamar');
+                }
+            } catch (error) {
+                console.error('Error fetching availability:', error);
+                showNotification('Terjadi kesalahan saat memuat data kamar', 'error');
+                document.getElementById('rooms-container').innerHTML = `
+                    <div class="no-rooms-message">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">
+                            <i class="fas fa-exclamation-triangle icon"></i>
+                        </div>
+                        <h3>Terjadi Kesalahan</h3>
+                        <p>Gagal memuat data kamar. Silakan coba lagi.</p>
+                        <button onclick="updateAvailability()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Coba Lagi</button>
+                    </div>
+                `;
+            }
         }
 
         // Initialize page
@@ -1646,9 +1973,26 @@
                     document.getElementById('checkout-date').value = checkoutDate.toISOString().split('T')[0];
                 }
                 updateDateDisplay();
+                // Automatically update availability when dates change
+                setTimeout(() => {
+                    updateAvailability();
+                }, 500);
             });
 
-            document.getElementById('checkout-date').addEventListener('change', updateDateDisplay);
+            document.getElementById('checkout-date').addEventListener('change', function() {
+                updateDateDisplay();
+                // Automatically update availability when dates change
+                setTimeout(() => {
+                    updateAvailability();
+                }, 500);
+            });
+
+            // Also update when guest count changes
+            document.getElementById('guests-count').addEventListener('change', function() {
+                setTimeout(() => {
+                    updateAvailability();
+                }, 500);
+            });
             
             // Load initial rooms
             setTimeout(() => {
