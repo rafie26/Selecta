@@ -686,6 +686,11 @@ class AdminController extends Controller
         return view('admin.restaurants');
     }
 
+    /**
+     * Show edit package form
+     * @param int $id Package ID
+     * @return \Illuminate\View\View
+     */
     public function editPackage($id)
     {
         $package = Package::findOrFail($id);
@@ -907,6 +912,43 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menghapus package.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle package active/inactive status
+     */
+    public function togglePackageStatus($id)
+    {
+        try {
+            $package = Package::findOrFail($id);
+            $package->is_active = !$package->is_active;
+            $package->save();
+
+            Log::info('Package status toggled', [
+                'package_id' => $package->id,
+                'package_name' => $package->name,
+                'new_status' => $package->is_active ? 'active' : 'inactive',
+                'updated_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status package berhasil diubah!',
+                'is_active' => $package->is_active
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle package status', [
+                'package_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status package.'
             ], 500);
         }
     }

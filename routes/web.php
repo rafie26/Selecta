@@ -101,6 +101,16 @@ Route::get('/gallery', [GalleryController::class, 'index'])->name('gallery.index
 Route::get('/ticket', [TicketController::class, 'index'])->name('ticket.index');
 Route::post('/ticket/book', [TicketController::class, 'book'])->name('ticket.book');
 
+// Review routes (require authentication)
+Route::middleware(['auth'])->group(function () {
+    Route::post('/ticket/reviews', [TicketController::class, 'storeReview'])->name('ticket.reviews.store');
+    Route::put('/ticket/reviews', [TicketController::class, 'updateReview'])->name('ticket.reviews.update');
+    Route::delete('/ticket/reviews', [TicketController::class, 'deleteReview'])->name('ticket.reviews.delete');
+});
+
+// Public review routes (no auth required)
+Route::get('/ticket/reviews', [TicketController::class, 'getReviews'])->name('ticket.reviews.get');
+
 // QR Code Routes
 Route::get('/qr/scanner', [App\Http\Controllers\QRController::class, 'scanPage'])->name('qr.scanner');
 Route::get('/qr/scan/{qrCode}', [App\Http\Controllers\QRController::class, 'scan'])->name('qr.scan');
@@ -161,6 +171,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::post('/packages', [AdminController::class, 'storePackage'])->name('packages.store');
     Route::get('/packages/{id}/edit', [AdminController::class, 'editPackage'])->name('packages.edit');
     Route::post('/packages/{id}/update', [AdminController::class, 'updatePackage'])->name('packages.update');
+    Route::post('/packages/{id}/toggle-status', [AdminController::class, 'togglePackageStatus'])->name('packages.toggle-status');
     Route::delete('/packages/{id}', [AdminController::class, 'deletePackage'])->name('packages.delete');
 });
 

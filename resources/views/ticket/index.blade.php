@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Selecta - Tiket Wisata</title>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Selecta - Pemesanan Tiket</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Midtrans Snap -->
     <script src="{{ config('midtrans.snap_url') }}" data-client-key="{{ config('midtrans.client_key') }}"></script>
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Authentication Status -->
     <meta name="auth-status" content="{{ auth()->check() ? '1' : '0' }}">
+    <!-- User Data -->
+    <meta name="user-name" content="{{ auth()->user()->name ?? '' }}">
+    <meta name="user-email" content="{{ auth()->user()->email ?? '' }}">
+    <meta name="user-phone" content="{{ auth()->user()->phone ?? '' }}">
     <script>
         // Authentication status
         const isUserAuthenticated = document.querySelector('meta[name="auth-status"]').content === '1';
@@ -24,6 +28,10 @@
                 console.error('Midtrans Snap not loaded properly!');
             }
         });
+        
+        // Package mapping data - will be populated by server
+        window.packageMappingData = {};
+        window.ticketDataFromServer = {};
     </script>
     <style>
         * {
@@ -33,2018 +41,2006 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-            min-height: 100vh;
-            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: #f5f5f5;
+            color: #333;
         }
 
-        .main-container {
-            width: 100%;
-            min-height: calc(100vh - 120px);
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            position: relative;
-        }
-
+        /* Hero Section */
         .hero-section {
             position: relative;
-            height: 400px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(30, 64, 175, 0.9) 100%), url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover;
-            overflow: hidden;
+            height: 60vh;
+            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
+                        url('/images/herotiket2.png');
+            background-size: cover;
+            background-position: center 70%;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 60px 24px;
+            justify-content: space-between;
             color: white;
         }
 
-        .hero-content {
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: #f5f5f5;
+            border-radius: 30px 30px 0 0;
+        }
+
+        .hero-header {
+            padding: 7rem;
             text-align: center;
-            z-index: 10;
+            z-index: 2;
         }
 
         .hero-title {
-            font-size: 56px;
-            font-weight: 900;
-            margin-bottom: 16px;
-            color: white;
-            letter-spacing: -2px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        .hero-subtitle {
-            font-size: 20px;
-            font-weight: 400;
-            margin-bottom: 24px;
-            color: rgba(255,255,255,0.9);
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        .hero-info {
+        .hero-rating {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 32px;
-            font-size: 16px;
-            font-weight: 500;
-            color: rgba(255,255,255,0.9);
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
-        .hero-info-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .star {
+        .hero-stars {
             color: #fbbf24;
+            font-size: 1.2rem;
         }
 
-        .content {
-            padding: 60px 40px;
-            background: white;
-            max-width: 1400px;
-            margin: -50px auto 0;
-            border-radius: 30px 30px 0 0;
-            position: relative;
-            z-index: 5;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-        }
-
-        .section-title {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            color: #0f172a;
-            text-align: center;
-        }
-
-        .date-section {
-            margin-bottom: 40px;
-        }
-
-        .date-navigation {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 24px;
-            margin-bottom: 32px;
-        }
-
-        .nav-button {
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 22px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-
-        .nav-button:hover {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-        }
-
-        .nav-button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .month-year-display {
-            font-size: 20px;
-            font-weight: 600;
-            color: #0f172a;
-            min-width: 180px;
-            text-align: center;
-        }
-
-        .date-picker-container {
-            position: relative;
-            overflow: hidden;
-            padding: 0 20px;
-        }
-
-        .date-picker {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            padding: 10px 0;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-
-        .date-picker::-webkit-scrollbar {
-            display: none;
-        }
-
-        .date-item {
-            min-width: 90px;
-            padding: 20px 16px;
-            background: #f1f5f9;
-            border: 2px solid transparent;
-            border-radius: 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .date-item:hover {
-            background: #e2e8f0;
-            transform: translateY(-2px);
-        }
-
-        .date-item.active {
-            background: #3b82f6;
-            border-color: #3b82f6;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .date-item.past {
-            background: #f1f5f9;
-            color: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .date-item.past:hover {
-            background: #f1f5f9;
-            transform: none;
-        }
-
-        .date-day {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-
-        .date-item.active .date-day {
-            color: rgba(255,255,255,0.8);
-        }
-
-        .date-item.past .date-day {
-            color: #cbd5e1;
-        }
-
-        .date-number {
-            font-size: 20px;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .date-item.active .date-number {
-            color: white;
-        }
-
-        .date-item.past .date-number {
-            color: #cbd5e1;
-        }
-
-        .date-month {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 4px;
-            font-weight: 500;
-        }
-
-        .date-item.active .date-month {
-            color: rgba(255,255,255,0.7);
-        }
-
-        .date-item.past .date-month {
-            color: #cbd5e1;
-        }
-
-        .packages-section {
-            margin-bottom: 40px;
-        }
-
-        .package-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .package-card {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 24px;
-            padding: 32px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-        }
-
-        .package-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #3b82f6, #1e40af);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .package-card:hover {
-            border-color: #3b82f6;
-            transform: translateY(-8px);
-            box-shadow: 0 25px 50px rgba(59, 130, 246, 0.2);
-        }
-
-        .package-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .package-card.selected {
-            border-color: #3b82f6;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 64, 175, 0.1) 100%);
-            transform: translateY(-6px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.25);
-        }
-
-        .package-card.selected::before {
-            transform: scaleX(1);
-        }
-
-        .package-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }
-
-        .package-badge {
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
-            color: white;
-            padding: 8px 18px;
-            border-radius: 25px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-
-        .package-badge.popular {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .package-badge.best {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .package-badge.exclusive {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        .package-name {
-            font-size: 22px;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 8px;
-        }
-
-        .package-desc {
-            font-size: 16px;
-            color: #475569;
-            margin-bottom: 24px;
-            line-height: 1.6;
-            background: #f8fafc;
-            padding: 16px 20px;
-            border-radius: 12px;
-            border-left: 4px solid #3b82f6;
-        }
-
-        .package-features {
-            margin-bottom: 24px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 20px;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #374151;
-            padding: 8px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .feature-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .feature-icon {
-            color: #3b82f6;
-            background: #eff6ff;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .package-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .package-price {
-            font-size: 26px;
-            font-weight: 800;
-            color: #3b82f6;
-        }
-
-        .price-per {
-            font-size: 14px;
-            color: #64748b;
-            font-weight: 500;
-        }
-
-        .quantity-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f1f5f9;
-            border-radius: 12px;
-            padding: 8px;
-        }
-
-        .qty-btn {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            color: #3b82f6;
-            font-size: 20px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .qty-btn:hover {
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        .qty-display {
-            font-size: 18px;
-            font-weight: 600;
-            color: #0f172a;
-            min-width: 30px;
-            text-align: center;
-        }
-
-        .summary-section {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border: 1px solid #e2e8f0;
+        .hero-badge {
+            background: #26265A;
+            padding: 0.3rem 0.8rem;
             border-radius: 20px;
-            padding: 32px;
-            margin: 40px auto;
-            display: none;
-            max-width: 600px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
-        .summary-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #0f172a;
-            text-align: center;
+        .hero-location {
+            font-size: 0.95rem;
+            opacity: 0.9;
         }
 
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 16px;
-            padding: 8px 0;
-        }
-
-        .summary-total {
-            border-top: 2px solid #3b82f6;
-            padding-top: 20px;
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 24px;
-            font-weight: 700;
-            color: #3b82f6;
-        }
-
-        .continue-button {
-            display: block;
-            width: 100%;
-            max-width: 450px;
-            margin: 0 auto;
-            padding: 24px;
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            font-size: 22px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .continue-button:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 45px rgba(59, 130, 246, 0.5);
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        }
-
-        .continue-button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* Form Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(10px);
-            padding: 20px;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .form-container {
+        .search-form {
             background: white;
-            border-radius: 24px;
-            width: 100%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-        }
-
-        .form-header {
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            padding: 32px;
-            color: white;
-            border-radius: 24px 24px 0 0;
-            text-align: center;
+            margin: -5rem 2rem 2rem;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 2;
             position: relative;
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        .close-modal:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .form-body {
-            padding: 40px;
-        }
-
-        .form-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 32px;
-        }
-
-        .form-section {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 24px;
-        }
-
-        .form-section h4 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 20px;
-            text-align: center;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 0.3rem;
         }
 
-        .form-input {
-            width: 100%;
-            padding: 14px 18px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s ease;
+        .form-select, .form-input {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
             background: white;
         }
 
-        .form-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .visitor-section {
-            grid-column: 1 / -1;
-        }
-
-        .visitor-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
-        }
-
-        .visitor-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .visitor-header {
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 16px;
-            text-align: center;
-            font-size: 16px;
-        }
-
-        .visitor-inputs {
-            display: grid;
-            gap: 12px;
-        }
-
-        .visitor-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 12px;
-        }
-
-        .payment-section {
-            grid-column: 1 / -1;
-        }
-
-        .payment-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .payment-method {
+        .ticket-counter {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 12px;
-            padding: 20px;
-            border: 2px solid #e5e7eb;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            justify-content: space-between;
+            position: relative;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
             background: white;
+            min-height: 48px;
         }
 
-        .payment-method:hover {
-            border-color: #3b82f6;
-            transform: translateY(-2px);
+        .counter-display {
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 500;
         }
 
-        .payment-method.selected {
-            border-color: #3b82f6;
-            background: #eff6ff;
-            transform: translateY(-2px);
+        .counter-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .payment-icon {
-            width: 60px;
-            height: 40px;
-            background: #3b82f6;
-            border-radius: 8px;
+        .counter-btn {
+            background: #26265A;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background 0.3s ease;
         }
 
-        .submit-button {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        .counter-btn:hover {
+            background: #141430;
+        }
+
+        .counter-btn:active {
+            transform: scale(0.95);
+        }
+
+        .counter-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-btn {
+            background: #26265A;
             color: white;
             border: none;
-            border-radius: 16px;
-            font-size: 18px;
-            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 24px;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
         }
 
-        .submit-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        .search-btn:hover {
+            background: #141430;
         }
 
-        /* Ticket Modal */
-        .ticket-modal {
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .right-sidebar {
+            height: fit-content;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .content-section {
             background: white;
-            border-radius: 24px;
-            width: 100%;
-            max-width: 500px;
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            min-height: 400px;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Tentang Selecta Section */
+        .about-content {
+            padding: 1.5rem;
+        }
+
+        .about-text {
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Compact Ticket Styles */
+        .ticket-info-section {
+            margin-bottom: 2rem;
+        }
+
+        .ticket-types-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .ticket-type-card-compact {
+            border: 1px solid #26265A;
+            border-radius: 8px;
+            padding: 1rem;
+            background: white;
             position: relative;
         }
 
-        .ticket-card {
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            position: relative;
-            overflow: hidden;
-            height: 250px;
+        .ticket-type-card-compact.premium {
+            border: 1px solid #26265A;
+            background: white;
         }
 
-        .ticket-card::before {
-            content: '';
+        .ticket-header-compact {
+            margin-bottom: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .ticket-title-compact {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #26265A;
+        }
+
+        .ticket-price-compact {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #26265A;
+        }
+
+        .badge-compact {
             position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(238, 90, 36, 0.3);
+        }
+
+        .ticket-brief {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .detail-btn {
+            background: none;
+            border: none;
+            color: #26265A;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            padding: 0;
+        }
+
+        .detail-btn:hover {
+            color: #141430;
+        }
+
+        /* Facilities Simple Styles */
+        .facilities-simple {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+        }
+
+        .facility-item-simple {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .facility-icon-simple {
+            color: #26265A;
+            width: 14px;
+            font-size: 0.8rem;
+        }
+
+        /* Improved Ticket Modal Styles */
+        .ticket-modal {
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover;
-            opacity: 0.4;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
 
-        .ticket-header {
-            position: relative;
-            z-index: 10;
-            padding: 40px 32px;
-            color: white;
-            text-align: center;
-            height: 100%;
+        .ticket-modal.active {
+            display: flex;
+        }
+
+        .ticket-modal-content {
+            background: white;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
+        }
+
+        .ticket-modal-header {
+            background: #26265A;
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .ticket-modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .ticket-modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.8rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .ticket-modal-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .ticket-modal-body {
+            padding: 0;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-content-section {
+            padding: 2rem;
+            scroll-margin-top: 60px;
+        }
+
+        /* Modal Navigation Tabs */
+        .modal-tabs {
+            background: white;
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .modal-tab {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            flex: 1;
+            text-align: center;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .modal-tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+            font-weight: 600;
+        }
+
+        .modal-tab:hover:not(.active) {
+            color: #374151;
+            background: #f9fafb;
+        }
+
+        .ticket-features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .feature-check {
+            color: #22c55e;
+            font-size: 0.9rem;
+            min-width: 14px;
+            margin-top: 0.1rem;
+        }
+
+        .feature-cross {
+            color: #ef4444;
+            font-size: 0.9rem;
+            min-width: 14px;
+            margin-top: 0.1rem;
+        }
+
+        .modal-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .modal-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .modal-section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #26265A;
+            margin-bottom: 0.8rem;
+        }
+
+        .modal-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-section li {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+            padding-left: 0.8rem;
+            position: relative;
+        }
+
+        .modal-section li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #26265A;
+        }
+
+        /* Review Section */
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .rating-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rating-score {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #26265A;
+        }
+
+        .rating-stars {
+            color: #fbbf24;
+        }
+
+        .review-count {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .view-all-reviews {
+            color: #26265A;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .review-carousel {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .review-container {
+            display: flex;
+            transition: transform 0.3s ease;
+        }
+
+        .review-card {
+            min-width: 100%;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-right: 1rem;
+            min-height: 220px;
+        }
+
+        .reviewer-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .reviewer-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #26265A;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .reviewer-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .review-date {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .review-rating {
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
+        }
+
+        .review-text {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #555;
+        }
+
+        .carousel-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .nav-btn {
+            background: #26265A;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: #141430;
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Photo Gallery Section */
+        .photo-gallery {
+            background: white;
+            border-radius: 8px;
+            margin-top: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .gallery-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gallery-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .gallery-count {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .view-all-photos {
+            color: #26265A;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .view-all-photos:hover {
+            color: #141430;
+        }
+
+        .gallery-grid {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .gallery-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Gallery Modal */
+        .gallery-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            z-index: 2000;
+            align-items: center;
             justify-content: center;
         }
 
-        .ticket-venue {
-            font-size: 36px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        .gallery-modal.active {
+            display: flex;
         }
 
-        .ticket-date {
-            font-size: 18px;
-            opacity: 0.95;
-            font-weight: 500;
-        }
-
-        .ticket-body {
-            background: white;
-            padding: 40px 32px;
+        .gallery-modal-content {
             position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .ticket-body::before {
-            content: '';
+        .gallery-modal img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .gallery-close {
             position: absolute;
-            top: -15px;
-            left: 30px;
+            top: 20px;
             right: 30px;
-            height: 30px;
-            background: white;
-            border-radius: 0 0 25px 25px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            z-index: 2001;
         }
 
-        .ticket-body::after {
-            content: '';
+        .gallery-nav {
             position: absolute;
-            top: -20px;
-            left: -20px;
-            right: -20px;
-            height: 40px;
-            background: radial-gradient(circle at 20px 20px, transparent 20px, white 20px),
-                        radial-gradient(circle at calc(100% - 20px) 20px, transparent 20px, white 20px);
-        }
-
-        .barcode-section {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .barcode {
-            width: 100%;
-            max-width: 350px;
-            height: 90px;
-            background: repeating-linear-gradient(
-                90deg,
-                #000 0px,
-                #000 3px,
-                transparent 3px,
-                transparent 6px,
-                #000 6px,
-                #000 9px,
-                transparent 9px,
-                transparent 12px,
-                #000 12px,
-                #000 15px,
-                transparent 15px,
-                transparent 18px
-            );
-            border-radius: 10px;
-            margin: 0 auto 20px;
-            border: 2px solid #e5e7eb;
-        }
-
-        .ticket-code {
-            font-family: 'Courier New', monospace;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
             font-size: 20px;
-            font-weight: bold;
-            color: #374151;
-            letter-spacing: 2px;
-            background: #f3f4f6;
-            padding: 12px 20px;
-            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gallery-prev {
+            left: 20px;
+        }
+
+        .gallery-next {
+            right: 20px;
+        }
+
+        /* Review Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .review-modal {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 400px;
+            background: white;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+            overflow-y: auto;
+        }
+
+        .review-modal.active {
+            transform: translateX(0);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #26265A;
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-content {
+            padding: 1.5rem;
+        }
+
+        .all-reviews {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .full-review-card {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .review-media {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .review-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        /* Review Actions & Buttons */
+        .review-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .btn-add-review, .btn-edit-review, .btn-login-review {
+            background: #26265A;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-add-review:hover, .btn-edit-review:hover, .btn-login-review:hover {
+            background: #141430;
+        }
+
+        .btn-edit-review {
+            background: #f59e0b;
+        }
+
+        .btn-edit-review:hover {
+            background: #d97706;
+        }
+
+        .btn-login-review {
+            background: #6b7280;
+        }
+
+        .btn-login-review:hover {
+            background: #4b5563;
+        }
+
+        /* Review Form Modal */
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.3rem;
+        }
+
+        /* Star Rating */
+        .star-rating {
+            display: flex;
+            gap: 0.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .star {
+            font-size: 1.5rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .star:hover,
+        .star.active {
+            color: #fbbf24;
+        }
+
+        /* Image Upload */
+        .image-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            transition: border-color 0.3s ease;
+        }
+
+        .image-upload-area:hover {
+            border-color: #26265A;
+        }
+
+        .upload-placeholder {
+            cursor: pointer;
+            color: #666;
+        }
+
+        .upload-placeholder i {
+            font-size: 2rem;
+            color: #26265A;
+            margin-bottom: 0.5rem;
+        }
+
+        .image-preview {
+            position: relative;
             display: inline-block;
         }
 
-        .ticket-details {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 24px;
-            margin: 24px 0;
+        .image-preview img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 6px;
+            object-fit: cover;
         }
 
-        .detail-grid {
-            display: grid;
-            gap: 16px;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-            font-weight: 600;
-            color: #3b82f6;
-            font-size: 18px;
-        }
-
-        .detail-label {
-            color: #64748b;
-            font-weight: 500;
-            font-size: 15px;
-        }
-
-        .detail-value {
-            color: #0f172a;
-            font-weight: 600;
-            font-size: 15px;
-        }
-
-        .download-section {
-            text-align: center;
-            padding-top: 24px;
-        }
-
-        .download-btn {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
+        .remove-image {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
             color: white;
             border: none;
-            padding: 16px 32px;
-            border-radius: 14px;
-            font-weight: 600;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
             cursor: pointer;
-            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .btn-submit {
+            background: #26265A;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-submit:hover {
+            background: #141430;
+        }
+
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* User Review Actions */
+        .review-actions-user {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-edit-user-review, .btn-delete-user-review {
+            background: none;
+            border: 1px solid #ddd;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-edit-user-review {
+            color: #f59e0b;
+            border-color: #f59e0b;
+        }
+
+        .btn-edit-user-review:hover {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-delete-user-review {
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .btn-delete-user-review:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* No Reviews State */
+        .no-reviews, .no-reviews-modal {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .no-reviews-modal h4 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .btn-add-review-modal, .btn-login-review-modal {
+            background: #26265A;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.5rem;
+            margin-top: 1rem;
         }
 
-        .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.3);
+        .btn-add-review-modal:hover {
+            background: #141430;
         }
 
-        /* Responsive */
+        .btn-login-review-modal {
+            background: #6b7280;
+        }
+
+        .btn-login-review-modal:hover {
+            background: #4b5563;
+        }
+
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #26265A;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #22c55e;
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+
+        .notification.warning {
+            background: #f59e0b;
+        }
+
+        .notification .close-notification {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .notification .close-notification:hover {
+            opacity: 1;
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            body {
-                padding-top: 80px;
-            }
-            
-            .content {
-                padding: 40px 20px;
-                margin: -30px auto 0;
-                border-radius: 20px 20px 0 0;
-            }
-
             .hero-title {
-                font-size: 42px;
+                font-size: 2rem;
             }
 
-            .hero-subtitle {
-                font-size: 18px;
-            }
-
-            .hero-info {
-                flex-direction: column;
-                gap: 16px;
-            }
-
-            .hero-section {
-                height: 350px;
-                padding: 40px 20px;
-            }
-
-            .section-title {
-                font-size: 24px;
-            }
-
-            .package-grid {
+            .search-form {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                margin: 0 1rem 1rem;
             }
 
-            .form-grid {
+            .container {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                padding: 1rem;
             }
 
-            .form-body {
-                padding: 24px;
+            .review-modal {
+                width: 100%;
             }
 
-            .payment-grid {
+            .gallery-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .ticket-types-grid {
                 grid-template-columns: 1fr;
             }
 
-            .visitor-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .date-picker {
-                justify-content: flex-start;
-                padding: 0;
-            }
-
-            .date-item {
-                min-width: 80px;
-                padding: 16px 12px;
-            }
-
-            .date-navigation {
-                gap: 16px;
-            }
-
-            .nav-button {
-                width: 45px;
-                height: 45px;
-                font-size: 18px;
-            }
-
-            .month-year-display {
-                font-size: 18px;
-                min-width: 150px;
+            .facilities-simple {
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .ticket-modal {
-                max-width: 420px;
-                margin: 20px;
+                padding: 10px;
             }
 
-            .ticket-venue {
-                font-size: 28px;
+            .ticket-modal-content {
+                width: 100%;
+                max-width: none;
+                max-height: 95vh;
             }
 
-            .ticket-header {
-                padding: 32px 24px;
+            .modal-tabs {
+                flex-wrap: wrap;
             }
 
-            .ticket-body {
-                padding: 32px 24px;
+            .modal-tab {
+                flex: 1 1 50%;
+                text-align: center;
+                padding: 0.75rem 0.5rem;
+                font-size: 0.8rem;
             }
-        }
 
-        /* Animations */
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .modal-content-section {
+                padding: 1.5rem;
             }
         }
 
-        .package-card {
-            animation: slideUp 0.6s ease forwards;
-        }
+        @media (max-width: 480px) {
+            .ticket-modal {
+                padding: 5px;
+            }
 
-        .package-card:nth-child(2) { animation-delay: 0.1s; }
-        .package-card:nth-child(3) { animation-delay: 0.2s; }
-        .package-card:nth-child(4) { animation-delay: 0.3s; }
+            .modal-tab {
+                flex: 1 1 100%;
+                font-size: 0.75rem;
+                padding: 0.6rem 0.4rem;
+            }
+
+            .modal-content-section {
+                padding: 1rem;
+            }
+
+            .ticket-modal-header {
+                padding: 1rem;
+            }
+
+            .ticket-modal-title {
+                font-size: 1.1rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Include Navbar Component -->
-    @include('components.navbar')
+      @include('components.navbar')
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-header">
+            <h1 class="hero-title">Taman Rekreasi Selecta</h1>
+            <div class="hero-rating">
+                <div class="hero-badge">
+                    <i class="fas fa-clock"></i>
+                    08:00 - 17:00 WIB
+                </div>
+                <div class="hero-badge">Wisata Populer Batu Malang</div>
+            </div>
+            <div class="hero-location">
+                <i class="fas fa-map-marker-alt"></i>
+                Jl. Raya Selecta No. 1, Batu, Malang
+            </div>
+        </div>
 
-    <div class="main-container">
-        <div class="hero-section">
-            <div class="hero-content">
-                <h1 class="hero-title">Selecta</h1>
-                <p class="hero-subtitle">Nikmati Keindahan Alam Batu, Malang</p>
-                <div class="hero-info">
-                    <div class="hero-info-item">
-                        <span class="star">⭐</span>
-                        <span>4.8 Rating</span>
+        <form class="search-form" id="ticketForm">
+            <div class="form-group">
+                <label class="form-label">Jenis Tiket</label>
+                <select class="form-select" id="ticketType">
+                    @if($packages->isNotEmpty())
+                        @foreach($packages as $package)
+                            <option value="{{ strtolower(str_replace('Tiket ', '', $package->name)) }}">
+                                {{ $package->name }} - Rp {{ number_format($package->price) }}
+                            </option>
+                        @endforeach
+                    @else
+                        <option value="reguler">Tiket Reguler - Rp 50.000</option>
+                        <option value="terusan">Tiket Terusan - Rp 80.000</option>
+                    @endif
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tanggal Kunjungan</label>
+                <input type="date" class="form-input" id="visitDate" value="{{ date('Y-m-d', strtotime('+1 day')) }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Jumlah Tiket</label>
+                <div class="ticket-counter">
+                    <span class="counter-display" id="ticketCountDisplay">1 tiket</span>
+                    <div class="counter-controls">
+                        <button type="button" class="counter-btn" id="decreaseBtn" onclick="decreaseTickets()">-</button>
+                        <button type="button" class="counter-btn" onclick="increaseTickets()">+</button>
                     </div>
-                    <div class="hero-info-item">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>Batu, Malang</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <button type="button" class="search-btn" onclick="searchTickets()">Pesan Tiket</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Left Content -->
+        <div class="left-content">
+            <!-- Tentang Selecta -->
+            <div class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Tentang Taman Selecta</h2>
+                    <p class="section-description">Destinasi wisata terpopuler di Batu Malang</p>
+                </div>
+                
+                <div class="about-content">
+                    <p class="about-text">
+                        Taman Selecta adalah destinasi wisata alam yang menawarkan keindahan panorama pegunungan dan udara sejuk khas Batu Malang. Dengan berbagai fasilitas menarik dan wahana seru, Selecta menjadi pilihan utama untuk liburan keluarga yang tak terlupakan.
+                    </p>
+                    
+                    <p class="about-text">
+                        Nikmati keindahan taman bunga yang colorful, kolam renang dengan pemandangan pegunungan, dan berbagai spot foto instagramable yang akan membuat kunjungan Anda semakin berkesan.
+                    </p>
+
+                    <!-- Ticket Information Section -->
+                    <div class="ticket-info-section">
+                        <h3 style="margin-bottom: 1.5rem; color: #26265A;">Jenis Tiket</h3>
+                        
+                        <div class="ticket-types-grid">
+                            @if($packages->isNotEmpty())
+                                @foreach($packages as $package)
+                                    <div class="ticket-type-card-compact {{ $package->badge ? 'premium' : '' }}">
+                                        <div class="ticket-header-compact">
+                                            <h4 class="ticket-title-compact">{{ $package->name }}</h4>
+                                            <div class="ticket-price-compact">Rp {{ number_format($package->price) }}</div>
+                                            @if($package->badge)
+                                                <span class="badge-compact">{{ $package->badge }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="ticket-brief">
+                                            <p>{{ $package->description ?: 'Paket wisata dengan fasilitas lengkap' }}</p>
+                                            <button class="detail-btn" data-ticket-type="{{ strtolower(str_replace('Tiket ', '', $package->name)) }}" onclick="openTicketModal(this.dataset.ticketType)">Detail</button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="ticket-type-card-compact">
+                                    <div class="ticket-header-compact">
+                                        <h4 class="ticket-title-compact">Tiket Reguler</h4>
+                                        <div class="ticket-price-compact">Rp 50.000</div>
+                                    </div>
+                                    <div class="ticket-brief">
+                                        <p>Termasuk: Kolam renang, waterpark, taman bunga, dan fasilitas dasar lainnya</p>
+                                        <button class="detail-btn" onclick="openTicketModal('reguler')">Detail</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="ticket-type-card-compact premium">
+                                    <div class="ticket-header-compact">
+                                        <h4 class="ticket-title-compact">Tiket Terusan</h4>
+                                        <div class="ticket-price-compact">Rp 80.000</div>
+                                    </div>
+                                    <div class="ticket-brief">
+                                        <p>Akses ke semua wahana dan fasilitas Taman Rekreasi Selecta termasuk tiket masuk</p>
+                                        <button class="detail-btn" onclick="openTicketModal('terusan')">Detail</button>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
                     </div>
-                    <div class="hero-info-item">
-                        <i class="fas fa-clock"></i>
-                        <span>08:00 - 17:00 WIB</span>
+
+                    <h3 style="margin: 2rem 0 1rem 0; color: #26265A;">Fasilitas</h3>
+                    
+                    <div class="facilities-simple">
+                        <div class="facility-item-simple">
+                            <i class="fas fa-swimming-pool facility-icon-simple"></i>
+                            <span>Kolam renang</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-water facility-icon-simple"></i>
+                            <span>Waterpark</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-seedling facility-icon-simple"></i>
+                            <span>Taman bunga</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-fish facility-icon-simple"></i>
+                            <span>Kolam ikan</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-dragon facility-icon-simple"></i>
+                            <span>Dino Ranch</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-ship facility-icon-simple"></i>
+                            <span>Perahu danau</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-mountain facility-icon-simple"></i>
+                            <span>Flying fox</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-utensils facility-icon-simple"></i>
+                            <span>Food court</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-car facility-icon-simple"></i>
+                            <span>Area parkir</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-restroom facility-icon-simple"></i>
+                            <span>Toilet & mushola</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-camera facility-icon-simple"></i>
+                            <span>Spot foto</span>
+                        </div>
+                        <div class="facility-item-simple">
+                            <i class="fas fa-gamepad facility-icon-simple"></i>
+                            <span>Wahana permainan</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="content">
-            <div class="date-section">
-                <h2 class="section-title">Pilih Tanggal Kunjungan</h2>
-                
-                <div class="date-navigation">
-                    <button class="nav-button" id="prevMonth" onclick="changeMonth(-1)">‹</button>
-                    <div class="month-year-display" id="monthYearDisplay">Agustus 2024</div>
-                    <button class="nav-button" id="nextMonth" onclick="changeMonth(1)">›</button>
-                </div>
-                
-                <div class="date-picker-container">
-                    <div class="date-picker" id="datePicker">
-                        <!-- Dates will be generated dynamically -->
+        <!-- Right Sidebar - Reviews & Gallery -->
+        <div class="right-sidebar">
+            <!-- Reviews Section -->
+            <div class="content-section">
+                <div class="section-header">
+                    <div class="review-header">
+                        <div>
+                            <h3 class="section-title">Review Pengunjung</h3>
+                            <div class="rating-summary">
+                                <span class="rating-score" id="avgRating">
+                                    @if($reviews->count() > 0)
+                                        {{ number_format($reviews->avg('rating'), 1) }}
+                                    @else
+                                        0.0
+                                    @endif
+                                </span>
+                                <div class="rating-stars" id="avgStars">
+                                    @if($reviews->count() > 0)
+                                        @for($i = 1; $i <= 5; $i++)
+                                            @if($i <= $reviews->avg('rating'))
+                                                ★
+                                            @else
+                                                ☆
+                                            @endif
+                                        @endfor
+                                    @else
+                                        ☆☆☆☆☆
+                                    @endif
+                                </div>
+                                <span class="review-count" id="reviewCount">({{ $reviews->count() }} review)</span>
+                            </div>
+                        </div>
+                        <div class="review-actions">
+                            @auth
+                                @if(!$userReview)
+                                    <button class="btn-add-review" onclick="openAddReviewModal()">
+                                        <i class="fas fa-plus"></i> Tulis Review
+                                    </button>
+                                @else
+                                    <button class="btn-edit-review" onclick="openEditReviewModal()">
+                                        <i class="fas fa-edit"></i> Edit Review
+                                    </button>
+                                @endif
+                            @else
+                                <button class="btn-login-review" onclick="showLoginAlert()">
+                                    <i class="fas fa-sign-in-alt"></i> Login untuk Review
+                                </button>
+                            @endauth
+                            <a href="#" class="view-all-reviews" onclick="openReviewModal()">Lihat Semua</a>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="packages-section">
-                <h2 class="section-title">Pilih Paket Wisata</h2>
-                
-                <div class="package-grid">
-                    @if(isset($packages) && $packages->count() > 0)
-                        @foreach($packages as $package)
-                        <div class="package-card" data-package-id="{{ $package->id }}">
-                            <div class="package-header">
-                                <h3>{{ $package->name }}</h3>
-                                @if($package->badge)
-                                    <span class="package-badge">{{ $package->badge }}</span>
-                                @endif
-                            </div>
-                            <div class="package-body">
-                                <div class="package-desc">{{ $package->description }}</div>
-                                @if($package->features)
-                                <div class="package-features">
-                                    @foreach($package->features as $feature)
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
+                <div class="review-carousel">
+                    <div class="review-container" id="reviewContainer">
+                        @if($reviews->count() > 0)
+                            @foreach($reviews->take(3) as $review)
+                                <div class="review-card">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-avatar">{{ strtoupper(substr($review->name, 0, 1)) }}</div>
+                                        <div>
+                                            <div class="reviewer-name">{{ $review->name }}</div>
+                                            <div class="review-date">{{ $review->created_at->diffForHumans() }}</div>
                                         </div>
-                                        <span>{{ $feature }}</span>
                                     </div>
-                                    @endforeach
-                                </div>
-                                @endif
-                            </div>
-                            <div class="package-footer">
-                                <div>
-                                    <div class="package-price">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
-                                    <div class="price-per">per orang</div>
-                                </div>
-                                <div class="quantity-controls">
-                                    <button class="qty-btn qty-minus" data-package-id="{{ $package->id }}">-</button>
-                                    <span class="qty-display" id="qty-{{ $package->id }}">0</span>
-                                    <button class="qty-btn qty-plus" data-package-id="{{ $package->id }}">+</button>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    @else
-                        <!-- Fallback static packages if database is empty -->
-                        <div class="package-card" data-package-id="1">
-                            <div class="package-header">
-                                <h3>Paket Reguler</h3>
-                            </div>
-                            <div class="package-body">
-                                <div class="package-desc">Paket tiket masuk reguler untuk menikmati semua wahana dan fasilitas</div>
-                                <div class="package-features">
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
+                                    <div class="review-rating">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            @if($i <= $review->rating)
+                                                ★
+                                            @else
+                                                ☆
+                                            @endif
+                                        @endfor
+                                        {{ $review->rating }}/5
+                                    </div>
+                                    <p class="review-text">{{ $review->comment }}</p>
+                                    @if($review->image_url)
+                                        <div class="review-media">
+                                            <img src="{{ $review->image_url }}" alt="Review Photo" class="review-image">
                                         </div>
-                                        <span>Akses ke semua wahana</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Fasilitas parkir</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Area bermain anak</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Spot foto menarik</span>
-                                    </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="review-card">
+                                <div class="no-reviews">
+                                    <i class="fas fa-star" style="font-size: 2rem; color: #ddd; margin-bottom: 1rem;"></i>
+                                    <p>Belum ada review. Jadilah yang pertama memberikan review!</p>
                                 </div>
                             </div>
-                            <div class="package-footer">
-                                <div>
-                                    <div class="package-price">Rp 50.000</div>
-                                    <div class="price-per">per orang</div>
-                                </div>
-                                <div class="quantity-controls">
-                                    <button class="qty-btn qty-minus" data-package-id="1">-</button>
-                                    <span class="qty-display" id="qty-1">0</span>
-                                    <button class="qty-btn qty-plus" data-package-id="1">+</button>
-                                </div>
-                            </div>
-                        </div>
+                        @endif
+                    </div>
 
-                        <div class="package-card" data-package-id="2">
-                            <div class="package-header">
-                                <h3>Paket Premium</h3>
-                                <span class="package-badge">Popular</span>
-                            </div>
-                            <div class="package-body">
-                                <div class="package-desc">Paket premium dengan fasilitas tambahan dan prioritas akses</div>
-                                <div class="package-features">
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Akses ke semua wahana</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Fasilitas parkir VIP</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Area bermain anak</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Spot foto menarik</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Prioritas akses wahana</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Welcome drink</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Souvenir eksklusif</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="package-footer">
-                                <div>
-                                    <div class="package-price">Rp 75.000</div>
-                                    <div class="price-per">per orang</div>
-                                </div>
-                                <div class="quantity-controls">
-                                    <button class="qty-btn qty-minus" data-package-id="2">-</button>
-                                    <span class="qty-display" id="qty-2">0</span>
-                                    <button class="qty-btn qty-plus" data-package-id="2">+</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="package-card" data-package-id="3">
-                            <div class="package-header">
-                                <h3>Paket Family</h3>
-                                <span class="package-badge">Best Value</span>
-                            </div>
-                            <div class="package-body">
-                                <div class="package-desc">Paket khusus untuk keluarga dengan harga spesial</div>
-                                <div class="package-features">
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Akses untuk 4 orang</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Fasilitas parkir</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Area bermain anak</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Spot foto menarik</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Makan siang keluarga</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <div class="feature-icon">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                        <span>Foto keluarga gratis</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="package-footer">
-                                <div>
-                                    <div class="package-price">Rp 180.000</div>
-                                    <div class="price-per">4 orang</div>
-                                </div>
-                                <div class="quantity-controls">
-                                    <button class="qty-btn qty-minus" data-package-id="3">-</button>
-                                    <span class="qty-display" id="qty-3">0</span>
-                                    <button class="qty-btn qty-plus" data-package-id="3">+</button>
-                                </div>
-                            </div>
+                    @if($reviews->count() > 1)
+                        <div class="carousel-nav">
+                            <button class="nav-btn" onclick="prevReview()">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="nav-btn" onclick="nextReview()">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
                         </div>
                     @endif
                 </div>
             </div>
 
-            <div class="summary-section" id="summarySection">
-                <div class="summary-title">Ringkasan Pesanan</div>
-                <div id="summaryItems"></div>
-                <div class="summary-total">
-                    <span>Total Pembayaran:</span>
-                    <span id="totalAmount">Rp 0</span>
-                </div>
-            </div>
-
-            <button class="continue-button" id="continueButton" onclick="openBookingForm()" disabled>
-                Pilih Paket Dulu
-            </button>
-        </div>
-    </div>
-
-    <!-- Booking Form Modal -->
-    <div class="modal" id="bookingModal">
-        <div class="form-container">
-            <div class="form-header">
-                <button class="close-modal" onclick="closeBookingForm()">&times;</button>
-                <h3 style="font-size: 24px; margin-bottom: 8px;">Data Pemesanan</h3>
-                <p style="opacity: 0.9;">Lengkapi data untuk melanjutkan pemesanan</p>
-            </div>
-            
-            <div class="form-body">
-                <div class="form-grid">
-                    <div class="form-section">
-                        <h4>Data Pemesan</h4>
-                        @auth
-                            <div class="form-group">
-                                <label class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-input" id="bookerName" value="{{ auth()->user()->name }}" placeholder="Masukkan nama lengkap">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-input" id="bookerEmail" value="{{ auth()->user()->email }}" placeholder="Masukkan email">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">No. Telepon</label>
-                                <input type="tel" class="form-input" id="bookerPhone" value="{{ auth()->user()->phone ?? '' }}" placeholder="Masukkan nomor telepon">
-                            </div>
-                        @else
-                            <div style="text-align: center; padding: 20px; background: #fef3c7; border-radius: 12px; border: 1px solid #f59e0b;">
-                                <div style="font-size: 18px; font-weight: 600; color: #92400e; margin-bottom: 8px;">
-                                    🔐 Login Diperlukan
-                                </div>
-                                <div style="color: #b45309; margin-bottom: 16px;">
-                                    Silakan login terlebih dahulu untuk melakukan pemesanan
-                                </div>
-                                <a href="/login" style="background: #f59e0b; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                                    Login Sekarang
-                                </a>
-                            </div>
-                        @endauth
+            <!-- Photo Gallery Section -->
+            <div class="photo-gallery">
+                <div class="gallery-header">
+                    <div>
+                        <h3 class="gallery-title">Foto-foto</h3>
+                        <div class="gallery-count">36+ foto tersedia</div>
                     </div>
-
-                    <div class="form-section">
-                        <h4>Ringkasan Pesanan</h4>
-                        <div id="modalSummaryItems" style="margin-bottom: 20px;"></div>
-                        <div style="border-top: 2px solid #3b82f6; padding-top: 16px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: #3b82f6;">
-                                <span>Total:</span>
-                                <span id="modalTotalAmount">Rp 0</span>
-                            </div>
-                        </div>
+                 <a href="{{ route('gallery.index') }}">Lihat Semua</a>
+                </div>
+                <div class="gallery-grid">
+                    <div class="gallery-item" onclick="openGallery(0)">
+                        <img src="/images/galeri1.jpeg" alt="Taman Selecta" id="galleryImg1">
+                    </div>
+                    <div class="gallery-item" onclick="openGallery(1)">
+                        <img src="/images/galeri2.jpeg" alt="Kolam Renang" id="galleryImg2">
+                    </div>
+                    <div class="gallery-item" onclick="openGallery(2)">
+                        <img src="/images/galeri3.jpeg" alt="Wahana Permainan" id="galleryImg3">
                     </div>
                 </div>
-
-                <div class="form-section visitor-section" id="visitorSection">
-                    <h4>Data Pengunjung</h4>
-                    <div class="visitor-grid" id="visitorList">
-                        <!-- Visitor forms will be generated here -->
-                    </div>
-                </div>
-
-                <div class="form-section payment-section">
-                    <h4>Metode Pembayaran</h4>
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 20px; border-radius: 16px; margin-bottom: 16px;">
-                            <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">💳 Midtrans Payment</div>
-                            <div style="font-size: 16px; opacity: 0.9;">Pembayaran aman dengan berbagai metode</div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 16px;">
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 20px; margin-bottom: 4px;">💳</div>
-                                <div style="font-size: 12px; color: #64748b;">Credit Card</div>
-                            </div>
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 20px; margin-bottom: 4px;">🏦</div>
-                                <div style="font-size: 12px; color: #64748b;">Bank Transfer</div>
-                            </div>
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 20px; margin-bottom: 4px;">📱</div>
-                                <div style="font-size: 12px; color: #64748b;">E-Wallet</div>
-                            </div>
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 12px; text-align: center;">
-                                <div style="font-size: 20px; margin-bottom: 4px;">🏪</div>
-                                <div style="font-size: 12px; color: #64748b;">Convenience Store</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @auth
-                    <button class="submit-button" onclick="processPayment()">
-                        🎫 Bayar Sekarang
-                    </button>
-                @else
-                    <a href="/login" class="submit-button" style="text-decoration: none; display: block; text-align: center;">
-                        🔐 Login untuk Memesan
-                    </a>
-                @endauth
             </div>
         </div>
     </div>
 
     <!-- Ticket Modal -->
-    <div class="modal" id="ticketModal">
-        <div class="ticket-modal">
-            <div class="ticket-card">
-                <div class="ticket-header">
-                    <button class="close-modal" onclick="closeTicketModal()">&times;</button>
-                    <div class="ticket-venue">Selecta</div>
-                    <div class="ticket-date" id="ticketModalDate">19 Agustus 2024</div>
-                </div>
+    <div class="ticket-modal" id="ticketModal">
+        <div class="ticket-modal-content">
+            <div class="ticket-modal-header">
+                <h3 class="ticket-modal-title" id="ticketModalTitle">Detail Tiket</h3>
+                <button class="ticket-modal-close" onclick="closeTicketModal()">&times;</button>
             </div>
-            
-            <div class="ticket-body">
-                <div class="barcode-section">
-                    <div class="barcode"></div>
-                    <div class="ticket-code" id="ticketCode">SEL240819001234</div>
+            <div class="ticket-modal-body">
+                <!-- Modal Navigation Tabs -->
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="scrollToSection('info')">Termasuk</button>
+                    <button class="modal-tab" onclick="scrollToSection('voucher')">Cara Pakai E-voucher</button>
+                    <button class="modal-tab" onclick="scrollToSection('terms')">Syarat & Ketentuan</button>
+                    <button class="modal-tab" onclick="scrollToSection('additional')">Informasi Tambahan</button>
                 </div>
 
-                <div class="ticket-details">
-                    <div class="detail-grid" id="ticketDetailsContainer">
-                        <!-- Details will be populated dynamically -->
+                <!-- Single Modal Content Area -->
+                <div class="modal-content-section" id="infoSection">
+                    <h4>Termasuk:</h4>
+                    <div class="ticket-features" id="ticketIncludes">
+                        <!-- Content will be populated by JavaScript -->
+                    </div>
+                    
+                    <h4 style="margin-top: 1.5rem;">Harga Tidak Termasuk:</h4>
+                    <div class="ticket-features" id="ticketNotIncludes">
+                        <!-- Content will be populated by JavaScript -->
                     </div>
                 </div>
 
-                <p style="font-size: 14px; color: #6b7280; margin: 20px 0; line-height: 1.6; text-align: center;">
-                    📱 Tunjukkan barcode ini di pintu masuk Selecta<br>
-                    💾 Screenshot atau simpan tiket untuk akses mudah
-                </p>
+                <div class="modal-content-section" id="voucherSection">
+                    <h4>Cara Pakai E-voucher:</h4>
+                    <ul id="voucherUsageList">
+                        <!-- Content will be populated by JavaScript -->
+                    </ul>
+                </div>
 
-                <div class="download-section">
-                    <button class="download-btn" onclick="downloadTicket()">
-                        <span>📱</span>
-                        <span>Simpan ke Galeri</span>
-                    </button>
+                <div class="modal-content-section" id="termsSection">
+                    <h4>Syarat & Ketentuan:</h4>
+                    <ul id="termsConditionsList">
+                        <!-- Content will be populated by JavaScript -->
+                    </ul>
+                </div>
+
+                <div class="modal-content-section" id="additionalSection">
+                    <h4>Informasi Tambahan:</h4>
+                    <ul id="additionalInfoList">
+                        <!-- Content will be populated by JavaScript -->
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Package Data for JavaScript -->
-    <script type="application/json" id="package-data">
-        @if(isset($packages) && $packages->count() > 0)
-        {
-            "prices": @json($packages->pluck('price', 'id')),
-            "names": @json($packages->pluck('name', 'id'))
-        }
-        @else
-        {
-            "prices": {"1": 50000, "2": 75000, "3": 180000},
-            "names": {"1": "Paket Reguler", "2": "Paket Premium", "3": "Paket Family"}
-        }
-        @endif
-    </script>
+    <!-- Gallery Modal -->
+    <div class="gallery-modal" id="galleryModal">
+        <span class="gallery-close" onclick="closeGallery()">&times;</span>
+        <button class="gallery-nav gallery-prev" onclick="prevImage()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="gallery-modal-content">
+            <img id="galleryImage" src="" alt="">
+        </div>
+        <button class="gallery-nav gallery-next" onclick="nextImage()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
 
-    <script>
-        let selectedPackages = {};
-        let packagePrices = {};
-        let packageNames = {};
-        
-        // Load package data from JSON script
-        try {
-            const packageData = JSON.parse(document.getElementById('package-data').textContent);
-            packagePrices = packageData.prices;
-            packageNames = packageData.names;
-        } catch (e) {
-            console.error('Failed to load package data:', e);
-            // Fallback data
-            packagePrices = {1: 50000, 2: 75000, 3: 180000};
-            packageNames = {1: 'Paket Reguler', 2: 'Paket Premium', 3: 'Paket Family'};
-        }
-        let selectedDate = null;
-        let selectedPayment = 'gopay';
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        
-        const monthNames = [
-            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-        ];
-        
-        const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    <!-- Review Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeReviewModal()">
+        <div class="review-modal" id="reviewModal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="modal-title">Semua Review ({{ $reviews->count() }})</h3>
+                <button class="close-btn" onclick="closeReviewModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="all-reviews" id="allReviewsContainer">
+                    @if($reviews->count() > 0)
+                        @foreach($reviews as $review)
+                            <div class="full-review-card">
+                                <div class="reviewer-info">
+                                    <div class="reviewer-avatar">{{ strtoupper(substr($review->name, 0, 1)) }}</div>
+                                    <div>
+                                        <div class="reviewer-name">{{ $review->name }}</div>
+                                        <div class="review-date">{{ $review->created_at->diffForHumans() }}</div>
+                                    </div>
+                                </div>
+                                <div class="review-rating">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        @if($i <= $review->rating)
+                                            ★
+                                        @else
+                                            ☆
+                                        @endif
+                                    @endfor
+                                    {{ $review->rating }}/5
+                                </div>
+                                <p class="review-text">{{ $review->comment }}</p>
+                                @if($review->image_url)
+                                    <div class="review-media">
+                                        <img src="{{ $review->image_url }}" alt="Review Photo" class="review-image">
+                                    </div>
+                                @endif
+                                @auth
+                                    @if($review->user_id == auth()->id())
+                                        <div class="review-actions-user">
+                                            <button class="btn-edit-user-review" onclick="openEditReviewModal()">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn-delete-user-review" onclick="deleteUserReview()">
+                                                <i class="fas fa-trash"></i> Hapus
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endauth
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="no-reviews-modal">
+                            <i class="fas fa-star" style="font-size: 3rem; color: #ddd; margin-bottom: 1rem;"></i>
+                            <h4>Belum ada review</h4>
+                            <p>Jadilah yang pertama memberikan review untuk Taman Selecta!</p>
+                            @auth
+                                <button class="btn-add-review-modal" onclick="closeReviewModal(); openAddReviewModal();">
+                                    <i class="fas fa-plus"></i> Tulis Review Pertama
+                                </button>
+                            @else
+                                <button class="btn-login-review-modal" onclick="showLoginAlert()">
+                                    <i class="fas fa-sign-in-alt"></i> Login untuk Review
+                                </button>
+                            @endauth
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
 
-        function initializeDatePicker() {
-            // Set default to current month
-            currentMonth = new Date().getMonth();
-            currentYear = new Date().getFullYear();
-            
-            // Auto-select tomorrow if today is available, otherwise select first available date
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            generateDatePicker();
-        }
-
-        function generateDatePicker() {
-            const datePicker = document.getElementById('datePicker');
-            const monthYearDisplay = document.getElementById('monthYearDisplay');
-            
-            // Update month/year display
-            monthYearDisplay.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-            
-            // Calculate dates to show (30 days from current month)
-            const firstDay = new Date(currentYear, currentMonth, 1);
-            const lastDay = new Date(currentYear, currentMonth + 1, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            let datesHTML = '';
-            
-            // Generate dates for current month (starting from tomorrow)
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-            
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const currentDate = new Date(currentYear, currentMonth, day);
-                const dayName = dayNames[currentDate.getDay()];
-                
-                // Skip dates before tomorrow (today and past dates)
-                if (currentDate < tomorrow) {
-                    continue;
-                }
-                
-                const dateString = `${day} ${monthNames[currentMonth]} ${currentYear}`;
-                
-                datesHTML += `
-                    <div class="date-item" 
-                         onclick="selectDate('${dateString}', this)"
-                         data-date="${dateString}">
-                        <div class="date-day">${dayName}</div>
-                        <div class="date-number">${day}</div>
-                        <div class="date-month">${monthNames[currentMonth].slice(0, 3)}</div>
+    <!-- Add/Edit Review Modal -->
+    <div class="modal-overlay" id="reviewFormOverlay" onclick="closeReviewFormModal()">
+        <div class="review-modal" id="reviewFormModal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="modal-title" id="reviewFormTitle">Tulis Review</h3>
+                <button class="close-btn" onclick="closeReviewFormModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <form id="reviewForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Rating</label>
+                        <div class="star-rating" id="starRating">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <input type="hidden" id="ratingInput" name="rating" value="5">
                     </div>
-                `;
-            }
-            
-            datePicker.innerHTML = datesHTML;
-            
-            // Auto-select first available date (tomorrow)
-            if (tomorrow.getMonth() === currentMonth && tomorrow.getFullYear() === currentYear) {
-                const tomorrowString = `${tomorrow.getDate()} ${monthNames[currentMonth]} ${currentYear}`;
-                const tomorrowElement = document.querySelector(`[data-date="${tomorrowString}"]`);
-                if (tomorrowElement) {
-                    selectDate(tomorrowString, tomorrowElement);
-                }
-            } else {
-                // Select first available date if tomorrow is not in current month
-                const firstAvailable = document.querySelector('.date-item');
-                if (firstAvailable) {
-                    const dateString = firstAvailable.getAttribute('data-date');
-                    selectDate(dateString, firstAvailable);
-                }
-            }
-            
-            updateNavigationButtons();
-        }
-
-        function selectDate(dateString, element) {
-            // Remove active class from all dates
-            document.querySelectorAll('.date-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Add active class to selected date
-            element.classList.add('active');
-            selectedDate = dateString;
-            
-            // Scroll selected date into view
-            element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
-
-        function changeMonth(direction) {
-            currentMonth += direction;
-            
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            } else if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
-            
-            generateDatePicker();
-        }
-
-        function updateNavigationButtons() {
-            const prevButton = document.getElementById('prevMonth');
-            const today = new Date();
-            
-            // Disable previous button if we're at current month/year or earlier
-            if (currentYear < today.getFullYear() || 
-                (currentYear === today.getFullYear() && currentMonth <= today.getMonth())) {
-                prevButton.disabled = true;
-            } else {
-                prevButton.disabled = false;
-            }
-            
-            // Limit to 12 months in the future
-            const nextButton = document.getElementById('nextMonth');
-            const maxMonth = today.getMonth();
-            const maxYear = today.getFullYear() + 1;
-            
-            if (currentYear > maxYear || 
-                (currentYear === maxYear && currentMonth >= maxMonth)) {
-                nextButton.disabled = true;
-            } else {
-                nextButton.disabled = false;
-            }
-        }
-
-        // Initialize calendar (auto-selects next day)
-        initializeDatePicker();
-
-        // Event delegation for package cards and quantity buttons
-        document.addEventListener('click', function(e) {
-            const plusBtn = e.target.closest('.qty-plus');
-            const minusBtn = e.target.closest('.qty-minus');
-            const card = e.target.closest('.package-card');
-
-            if (plusBtn) {
-                e.stopPropagation();
-                const packageId = plusBtn.dataset.packageId;
-                changeQty(packageId, 1);
-                return;
-            }
-
-            if (minusBtn) {
-                e.stopPropagation();
-                const packageId = minusBtn.dataset.packageId;
-                changeQty(packageId, -1);
-                return;
-            }
-
-            if (card && !e.target.closest('.quantity-controls')) {
-                const packageId = card.dataset.packageId;
-                changeQty(packageId, 1);
-            }
-        });
-        
-        // Package selection handled through quantity controls
-        function selectPackage(packageId) {
-            // Package selection handled through quantity controls
-        }
-
-        function changeQty(packageId, change) {
-            const qtyElement = document.getElementById(`qty-${packageId}`);
-            let currentQty = parseInt(qtyElement.textContent);
-            let newQty = Math.max(0, currentQty + change);
-            
-            qtyElement.textContent = newQty;
-            
-            if (newQty > 0) {
-                selectedPackages[packageId] = {
-                    quantity: newQty,
-                    price: packagePrices[packageId],
-                    name: packageNames[packageId]
-                };
-                document.querySelector(`[data-package-id="${packageId}"]`).classList.add('selected');
-            } else {
-                delete selectedPackages[packageId];
-                document.querySelector(`[data-package-id="${packageId}"]`).classList.remove('selected');
-            }
-            
-            updateSummary();
-        }
-
-        function updateSummary() {
-            let subtotal = 0;
-            let totalQty = 0;
-            let summaryHTML = '';
-            
-            Object.entries(selectedPackages).forEach(([id, pkg]) => {
-                subtotal += pkg.price * pkg.quantity;
-                totalQty += pkg.quantity;
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span>${pkg.quantity}x ${pkg.name}</span>
-                        <span>Rp ${(pkg.price * pkg.quantity).toLocaleString('id-ID')}</span>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Komentar</label>
+                        <textarea id="commentInput" name="comment" class="form-textarea" rows="4" 
+                                placeholder="Ceritakan pengalaman Anda di Taman Selecta..." 
+                                minlength="10" maxlength="1000" required></textarea>
+                        <div class="char-count">
+                            <span id="charCount">0</span>/1000 karakter
+                        </div>
                     </div>
-                `;
-            });
-            
-            const summarySection = document.getElementById('summarySection');
-            const continueButton = document.getElementById('continueButton');
-            
-            if (totalQty > 0) {
-                summarySection.style.display = 'block';
-                document.getElementById('summaryItems').innerHTML = summaryHTML;
-                document.getElementById('totalAmount').textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
-                
-                continueButton.disabled = false;
-                continueButton.textContent = `🎫 Lanjut Pemesanan (${totalQty} tiket)`;
-            } else {
-                summarySection.style.display = 'none';
-                continueButton.disabled = true;
-                continueButton.textContent = 'Pilih Paket Dulu';
-            }
-        }
-
-        function openBookingForm() {
-            if (Object.keys(selectedPackages).length === 0) {
-                alert('Pilih paket dulu ya!');
-                return;
-            }
-            
-            if (!selectedDate) {
-                alert('Pilih tanggal kunjungan dulu ya!');
-                return;
-            }
-
-            generateVisitorForm();
-            updateModalSummary();
-            
-            const modal = document.getElementById('bookingModal');
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeBookingForm() {
-            const modal = document.getElementById('bookingModal');
-            modal.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function generateVisitorForm() {
-            let totalVisitors = 0;
-            Object.values(selectedPackages).forEach(pkg => {
-                if (pkg.name === 'Family Bundle') {
-                    totalVisitors += pkg.quantity * 4; // 4 people per bundle
-                } else {
-                    totalVisitors += pkg.quantity;
-                }
-            });
-
-            let visitorHTML = '';
-            for (let i = 1; i <= totalVisitors; i++) {
-                visitorHTML += `
-                    <div class="visitor-item">
-                        <div class="visitor-header">Pengunjung ${i}</div>
-                        <div class="visitor-inputs">
-                            <input type="text" class="form-input" placeholder="Nama lengkap" id="visitor_${i}_name" required>
-                            <div class="visitor-row">
-                                <input type="number" class="form-input" placeholder="Umur" id="visitor_${i}_age" required>
-                                <select class="form-input" id="visitor_${i}_gender" required>
-                                    <option value="">Jenis Kelamin</option>
-                                    <option value="male">Laki-laki</option>
-                                    <option value="female">Perempuan</option>
-                                </select>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Foto (Opsional)</label>
+                        <div class="image-upload-area" id="imageUploadArea">
+                            <input type="file" id="imageInput" name="image" accept="image/*" style="display: none;">
+                            <div class="upload-placeholder" onclick="document.getElementById('imageInput').click()">
+                                <i class="fas fa-camera"></i>
+                                <p>Klik untuk menambah foto</p>
+                                <small>JPG, PNG, GIF (Max 2MB)</small>
+                            </div>
+                            <div class="image-preview" id="imagePreview" style="display: none;">
+                                <img id="previewImg" src="" alt="Preview">
+                                <button type="button" class="remove-image" onclick="removeImage()">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
-                `;
-            }
-
-            document.getElementById('visitorList').innerHTML = visitorHTML;
-        }
-
-        function updateModalSummary() {
-            let subtotal = 0;
-            let summaryHTML = '';
-            
-            Object.entries(selectedPackages).forEach(([id, pkg]) => {
-                subtotal += pkg.price * pkg.quantity;
-                summaryHTML += `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                        <span style="font-size: 14px;">${pkg.quantity}x ${pkg.name}</span>
-                        <span style="font-weight: 600;">Rp ${(pkg.price * pkg.quantity).toLocaleString('id-ID')}</span>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('modalSummaryItems').innerHTML = summaryHTML;
-            document.getElementById('modalTotalAmount').textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
-        }
-
-        function selectPayment(method) {
-            selectedPayment = method;
-            document.querySelectorAll('.payment-method').forEach(pm => pm.classList.remove('selected'));
-            document.querySelector(`[data-payment="${method}"]`).classList.add('selected');
-        }
-
-        function processPayment() {
-            // Check if user is authenticated
-            if (!isUserAuthenticated) {
-                alert('Silakan login terlebih dahulu untuk melakukan pemesanan');
-                window.location.href = '/login';
-                return;
-            }
-
-            // Validate form
-            const bookerName = document.getElementById('bookerName').value;
-            const bookerEmail = document.getElementById('bookerEmail').value;
-            const bookerPhone = document.getElementById('bookerPhone').value;
-
-            if (!bookerName || !bookerEmail || !bookerPhone) {
-                alert('Lengkapi data pemesan terlebih dahulu!');
-                return;
-            }
-
-            // Validate visitors
-            let totalVisitors = 0;
-            Object.values(selectedPackages).forEach(pkg => {
-                if (pkg.name === 'Family Bundle') {
-                    totalVisitors += pkg.quantity * 4;
-                } else {
-                    totalVisitors += pkg.quantity;
-                }
-            });
-
-            for (let i = 1; i <= totalVisitors; i++) {
-                const name = document.getElementById(`visitor_${i}_name`).value;
-                const age = document.getElementById(`visitor_${i}_age`).value;
-
-                if (!name || !age) {
-                    alert(`Lengkapi data pengunjung ${i}!`);
-                    return;
-                }
-            }
-
-            // Prepare form data
-            const formData = new FormData();
-            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-            formData.append('visit_date', selectedDate);
-            
-            // Add packages
-            Object.entries(selectedPackages).forEach(([id, pkg]) => {
-                formData.append(`packages[${id}]`, pkg.quantity);
-            });
-
-            // Add visitors
-            for (let i = 1; i <= totalVisitors; i++) {
-                const name = document.getElementById(`visitor_${i}_name`).value;
-                const age = document.getElementById(`visitor_${i}_age`).value;
-                
-                formData.append(`visitors[${i-1}][name]`, name);
-                formData.append(`visitors[${i-1}][age_category]`, age);
-            }
-
-            // Show loading
-            const submitButton = document.querySelector('.submit-button');
-            const originalText = submitButton.textContent;
-            
-            submitButton.textContent = '⏳ Memproses Pembayaran...';
-            submitButton.disabled = true;
-
-            // Send to backend
-            fetch('/payment', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response data:', data);
-                
-                // Check for error response
-                if (data.error) {
-                    throw new Error(data.message || 'Terjadi kesalahan pada server');
-                }
-                
-                if (data.snap_token) {
-                    console.log('Snap token received:', data.snap_token);
                     
-                    // Check if Snap is available
-                    if (typeof window.snap === 'undefined') {
-                        throw new Error('Midtrans Snap tidak tersedia. Silakan refresh halaman.');
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="closeReviewFormModal()">Batal</button>
+                        <button type="submit" class="btn-submit" id="submitReviewBtn">
+                            <i class="fas fa-paper-plane"></i> Kirim Review
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Data as JSON in hidden div -->
+    <div id="server-data" style="display: none;">
+        <script type="application/json" id="package-mapping-data">
+            {!! json_encode($packageMapping ?? ['reguler' => 1, 'terusan' => 2]) !!}
+        </script>
+        <script type="application/json" id="ticket-data">
+            @php
+                $ticketDataArray = [];
+                if($packages->isNotEmpty()) {
+                    foreach($packages as $package) {
+                        $key = strtolower(str_replace('Tiket ', '', $package->name));
+                        $ticketDataArray[$key] = [
+                            'title' => $package->name . ' - Rp ' . number_format($package->price),
+                            'includes' => $package->features ?: ['Akses ke fasilitas utama', 'Fasilitas parkir', 'Area bermain'],
+                            'notIncluded' => [
+                                'Tiket wahana permainan diluar paket',
+                                'Tiket parkir kendaraan'
+                            ],
+                            'voucherInfo' => [
+                                'Berlaku selama periode yang tertera di voucher'
+                            ],
+                            'voucherUsage' => [
+                                'Voucher tersedia di menu "Your Orders"',
+                                'Tidak perlu dicetak',
+                                'Tunjukkan kode QR pada petugas'
+                            ],
+                            'termsConditions' => [
+                                'Tiket yang sudah dibeli tidak dapat dijadwalkan ulang',
+                                'Tiket yang dibeli tidak dapat dikembalikan/non-refundable',
+                                'Penjualan tiket dapat dihentikan kapan saja',
+                                'E-tiket tidak dapat ditukar dengan uang'
+                            ]
+                        ];
                     }
-                    
-                    // Use Midtrans Snap
-                    window.snap.pay(data.snap_token, {
-                        onSuccess: function(result) {
-                            console.log('Payment success:', result);
-                            alert('Pembayaran berhasil! Anda akan diarahkan ke halaman tiket.');
-                            window.location.href = `/payment/success/${data.booking_id}`;
-                        },
-                        onPending: function(result) {
-                            console.log('Payment pending:', result);
-                            alert('Pembayaran sedang diproses. Silakan cek status pembayaran Anda.');
-                            window.location.href = `/payment/success/${data.booking_id}`;
-                        },
-                        onError: function(result) {
-                            console.log('Payment error:', result);
-                            alert('Pembayaran gagal! Silakan coba lagi.');
-                        },
-                        onClose: function() {
-                            console.log('Payment popup closed');
-                            // Don't show alert on close, user might want to try again
-                        }
-                    });
-                } else {
-                    throw new Error('Token pembayaran tidak ditemukan. Silakan coba lagi.');
                 }
-            })
-            .catch(error => {
-                console.error('Payment Error:', error);
-                let errorMessage = 'Terjadi kesalahan saat memproses pembayaran.';
-                
-                if (error.message.includes('401')) {
-                    errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
-                } else if (error.message.includes('500')) {
-                    errorMessage = 'Terjadi kesalahan pada server. Silakan coba lagi.';
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                alert(errorMessage);
-            })
-            .finally(() => {
-                submitButton.textContent = originalText;
-                submitButton.disabled = false;
-            });
+            @endphp
+            {!! json_encode($ticketDataArray) !!}
+        </script>
+        <script type="application/json" id="user-review-data">
+            {!! json_encode($userReview) !!}
+        </script>
+    </div>
+
+    <script>
+        let currentReview = 0;
+        const totalReviews = document.querySelectorAll('.review-card').length;
+        
+        // Gallery images data - using images from gallery page
+        const galleryImages = [
+            { src: '/images/galeri1.jpeg', alt: 'Taman Selecta - Pemandangan Utama' },
+            { src: '/images/galeri2.jpeg', alt: 'Kolam Renang Selecta' },
+            { src: '/images/galeri3.jpeg', alt: 'Wahana Permainan' },
+            { src: '/images/galeri4.jpeg', alt: 'Taman Bunga Colorful' },
+            { src: '/images/galeri5.jpeg', alt: 'Area Bermain Anak' },
+            { src: '/images/galeri6.jpeg', alt: 'Flying Fox Adventure' },
+            { src: '/images/galeri7.jpeg', alt: 'Waterpark Area' },
+            { src: '/images/galeri8.jpeg', alt: 'Dino Ranch' },
+            { src: '/images/galeri9.jpeg', alt: 'Food Court' },
+            { src: '/images/galeri10.jpeg', alt: 'Spot Foto Instagramable' },
+            { src: '/images/galeri11.jpeg', alt: 'Perahu Danau' },
+            { src: '/images/galeri12.jpeg', alt: 'Taman Lumut' }
+        ];
+        
+        let currentImageIndex = 0;
+
+        // Gallery auto rotation - using gallery images
+        let currentGallerySet = 0;
+        const galleryImageSets = [
+            ['/images/galeri1.jpeg', '/images/galeri2.jpeg', '/images/galeri3.jpeg'],
+            ['/images/galeri4.jpeg', '/images/galeri5.jpeg', '/images/galeri6.jpeg'],
+            ['/images/galeri7.jpeg', '/images/galeri8.jpeg', '/images/galeri9.jpeg'],
+            ['/images/galeri10.jpeg', '/images/galeri11.jpeg', '/images/galeri12.jpeg']
+        ];
+
+        // Ticket data - use data from window object or fallback
+        const ticketData = window.ticketDataFromServer || {
+            reguler: {
+                title: 'Tiket Reguler - Rp 50.000',
+                includes: [
+                    'Tiket masuk',
+                    'Akses kolam renang',
+                    'Waterpark',
+                    'Kolam Ikan',
+                    'Akuarium',
+                    'Taman Bunga',
+                    'Dino Ranch',
+                    'Asuransi kecelakaan'
+                ],
+                notIncluded: [
+                    'Tiket wahana permainan diluar paket',
+                    'Tiket parkir kendaraan'
+                ],
+                voucherInfo: [
+                    'Berlaku selama periode yang tertera di voucher'
+                ],
+                voucherUsage: [
+                    'Voucher tersedia di menu "Your Orders"',
+                    'Tidak perlu dicetak',
+                    'Tunjukkan kode QR pada petugas'
+                ],
+                termsConditions: [
+                    'Tiket yang sudah dibeli tidak dapat dijadwalkan ulang',
+                    'Tiket yang dibeli tidak dapat dikembalikan/non-refundable',
+                    'Penjualan tiket dapat dihentikan kapan saja',
+                    'E-tiket tidak dapat ditukar dengan uang'
+                ]
+            },
+            terusan: {
+                title: 'Tiket Terusan - Rp 80.000',
+                includes: [
+                    '1x Tiket Masuk ke Taman Rekreasi Selecta untuk 1 Pengunjung',
+                    '1x Tiket Masuk ke Dino Ranch untuk 1 Pengunjung',
+                    '1x Tiket Masuk ke Bioskop 4D untuk 1 Pengunjung',
+                    '1x Tiket Masuk ke Mobil Ayun untuk 1 Pengunjung',
+                    '1x Tiket Masuk ke Mini Bumper Car untuk 1 Pengunjung',
+                    '1x Tiket Masuk ke Paddle Boat untuk 1 Pengunjung',
+                    '1x Akses ke Bianglala untuk 1 Pengunjung',
+                    '1x Akses ke Dino Ride untuk 1 Pengunjung',
+                    '1x Akses ke Sky Bike untuk 1 Pengunjung',
+                    '1x Akses ke Garden Tram untuk 1 Pengunjung',
+                    '1x Akses ke Kolam Renang untuk 1 Pengunjung',
+                    '1x Akses ke Waterpark untuk 1 Pengunjung',
+                    '1x Akses ke Kolam Ikan untuk 1 Pengunjung',
+                    '1x Akses ke Taman Lumut untuk 1 Pengunjung',
+                    '1x Akses ke Taman Bunga untuk 1 Pengunjung',
+                    '1x Akses ke Tagada Disco untuk 1 Pengunjung'
+                ],
+                notIncluded: [
+                    'Tiket wahana permainan diluar paket',
+                    'Tiket parkir kendaraan'
+                ],
+                voucherInfo: [
+                    'Berlaku selama periode yang tertera di voucher'
+                ],
+                voucherUsage: [
+                    'Voucher tersedia di menu "Your Orders"',
+                    'Tidak perlu dicetak',
+                    'Tunjukkan kode QR pada petugas'
+                ],
+                termsConditions: [
+                    'Tiket yang sudah dibeli tidak dapat dijadwalkan ulang',
+                    'Tiket yang dibeli tidak dapat dikembalikan/non-refundable',
+                    'Penjualan tiket dapat dihentikan kapan saja',
+                    'E-tiket tidak dapat ditukar dengan uang'
+                ]
+            }
+        };
+
+        // Function to redirect to gallery page
+        function goToGalleryPage() {
+            // Replace with your actual gallery page URL
+            window.location.href = 'galeri.html'; // or wherever your gallery page is located
         }
 
-        function generateTicketCode() {
-            const today = new Date();
-            const dateStr = today.getFullYear().toString().slice(-2) + 
-                          (today.getMonth() + 1).toString().padStart(2, '0') + 
-                          today.getDate().toString().padStart(2, '0');
-            const randomNum = Math.floor(Math.random() * 999999).toString().padStart(6, '0');
-            return `SEL${dateStr}${randomNum}`;
+        function rotateGalleryImages() {
+            currentGallerySet = (currentGallerySet + 1) % galleryImageSets.length;
+            const currentSet = galleryImageSets[currentGallerySet];
+            
+            document.getElementById('galleryImg1').src = currentSet[0];
+            document.getElementById('galleryImg2').src = currentSet[1];
+            document.getElementById('galleryImg3').src = currentSet[2];
         }
 
-        function showTicketModal(ticketCode) {
-            document.getElementById('ticketCode').textContent = ticketCode;
-            document.getElementById('ticketModalDate').textContent = selectedDate;
-            
-            // Generate ticket details
-            let detailsHTML = `
-                <div class="detail-row">
-                    <span class="detail-label">Kode Tiket:</span>
-                    <span class="detail-value">${ticketCode}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tanggal:</span>
-                    <span class="detail-value">${selectedDate}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Waktu:</span>
-                    <span class="detail-value">08:00 - 17:00 WIB</span>
-                </div>
-            `;
-            
-            Object.entries(selectedPackages).forEach(([id, pkg]) => {
-                detailsHTML += `
-                    <div class="detail-row">
-                        <span class="detail-label">${pkg.name}:</span>
-                        <span class="detail-value">${pkg.quantity}x</span>
-                    </div>
-                `;
+
+        function nextReview() {
+            const container = document.getElementById('reviewContainer');
+            currentReview = (currentReview + 1) % totalReviews;
+            container.style.transform = `translateX(-${currentReview * 100}%)`;
+        }
+
+        function prevReview() {
+            const container = document.getElementById('reviewContainer');
+            currentReview = (currentReview - 1 + totalReviews) % totalReviews;
+            container.style.transform = `translateX(-${currentReview * 100}%)`;
+        }
+
+        // Modal Tab Functions
+        function scrollToSection(sectionName) {
+            document.querySelectorAll('.modal-tab').forEach(tab => {
+                tab.classList.remove('active');
             });
             
-            let totalAmount = 0;
-            Object.values(selectedPackages).forEach(pkg => {
-                totalAmount += pkg.price * pkg.quantity;
-            });
+            event.target.classList.add('active');
             
-            detailsHTML += `
-                <div class="detail-row">
-                    <span class="detail-label">Total Bayar:</span>
-                    <span class="detail-value">Rp ${totalAmount.toLocaleString('id-ID')}</span>
-                </div>
-            `;
+            const sectionMap = {
+                'info': 'infoSection',
+                'voucher': 'voucherSection', 
+                'terms': 'termsSection',
+                'additional': 'additionalSection'
+            };
             
-            document.getElementById('ticketDetailsContainer').innerHTML = detailsHTML;
-            
+            const targetSection = document.getElementById(sectionMap[sectionName]);
+            if (targetSection) {
+                targetSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+
+        // Ticket Modal Functions
+        function openTicketModal(ticketType) {
             const modal = document.getElementById('ticketModal');
+            const title = document.getElementById('ticketModalTitle');
+            const includesList = document.getElementById('ticketIncludes');
+            const notIncludesList = document.getElementById('ticketNotIncludes');
+            const voucherUsage = document.getElementById('voucherUsageList');
+            const termsList = document.getElementById('termsConditionsList');
+            const additionalList = document.getElementById('additionalInfoList');
+            
+            const data = ticketData[ticketType];
+            
+            title.textContent = data.title;
+            
+            includesList.innerHTML = data.includes.map(item => `
+                <div class="feature-item">
+                    <i class="fas fa-check feature-check"></i>
+                    <span>${item}</span>
+                </div>
+            `).join('');
+            
+            notIncludesList.innerHTML = data.notIncluded.map(item => `
+                <div class="feature-item">
+                    <i class="fas fa-times feature-cross"></i>
+                    <span>${item}</span>
+                </div>
+            `).join('');
+            
+            voucherUsage.innerHTML = data.voucherUsage.map(item => `<li>${item}</li>`).join('');
+            termsList.innerHTML = data.termsConditions.map(item => `<li>${item}</li>`).join('');
+            additionalList.innerHTML = data.voucherInfo.map(item => `<li>${item}</li>`).join('');
+            
+            document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('.modal-tab').classList.add('active');
+            
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
 
         function closeTicketModal() {
-            const modal = document.getElementById('ticketModal');
-            modal.classList.remove('active');
+            document.getElementById('ticketModal').classList.remove('active');
             document.body.style.overflow = 'auto';
         }
-
-        function downloadTicket() {
-            // Simulate download/save functionality
-            alert('🎉 Tiket berhasil disimpan! Check galeri kamu atau folder Downloads.');
-            closeTicketModal();
-        }
-
-        function resetForm() {
-            selectedPackages = {};
-            document.querySelectorAll('.qty-display').forEach(el => el.textContent = '0');
-            document.querySelectorAll('.package-card').forEach(el => el.classList.remove('selected'));
-            document.getElementById('summarySection').style.display = 'none';
-            document.getElementById('continueButton').disabled = true;
-            document.getElementById('continueButton').textContent = 'Pilih Paket Dulu';
-            
-            document.getElementById('bookerName').value = '';
-            document.getElementById('bookerEmail').value = '';
-            document.getElementById('bookerPhone').value = '';
-        }
-
-        document.getElementById('bookingModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeBookingForm();
-            }
-        });
 
         document.getElementById('ticketModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -2052,22 +2048,584 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeDatePicker();
+        function openReviewModal() {
+            document.getElementById('modalOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('reviewModal').classList.add('active');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('modalOverlay').style.display = 'none';
+            }, 300);
+            document.body.style.overflow = 'auto';
+        }
+
+        // Gallery Functions
+        function openGallery(imageIndex = 0) {
+            currentImageIndex = imageIndex;
+            const modal = document.getElementById('galleryModal');
+            const img = document.getElementById('galleryImage');
             
-            const cards = document.querySelectorAll('.package-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(30px)';
-                
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 150);
-            });
+            img.src = galleryImages[currentImageIndex].src;
+            img.alt = galleryImages[currentImageIndex].alt;
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGallery() {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function nextImage() {
+            currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
+            const img = document.getElementById('galleryImage');
+            img.src = galleryImages[currentImageIndex].src;
+            img.alt = galleryImages[currentImageIndex].alt;
+        }
+
+        function prevImage() {
+            currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
+            const img = document.getElementById('galleryImage');
+            img.src = galleryImages[currentImageIndex].src;
+            img.alt = galleryImages[currentImageIndex].alt;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            const modal = document.getElementById('galleryModal');
+            if (modal.classList.contains('active')) {
+                if (e.key === 'ArrowRight') {
+                    nextImage();
+                } else if (e.key === 'ArrowLeft') {
+                    prevImage();
+                } else if (e.key === 'Escape') {
+                    closeGallery();
+                }
+            }
+            
+            const ticketModal = document.getElementById('ticketModal');
+            if (ticketModal.classList.contains('active') && e.key === 'Escape') {
+                closeTicketModal();
+            }
         });
 
-        console.log('🎫 Selecta Full Screen Booking System with Enhanced Date Picker loaded!');
+        // Ticket booking functionality
+        let ticketCount = 1;
+        
+        // Load server data from JSON scripts
+        function loadServerData() {
+            try {
+                const packageMappingElement = document.getElementById('package-mapping-data');
+                const ticketDataElement = document.getElementById('ticket-data');
+                const userReviewElement = document.getElementById('user-review-data');
+                
+                if (packageMappingElement) {
+                    window.packageMappingData = JSON.parse(packageMappingElement.textContent);
+                }
+                
+                if (ticketDataElement) {
+                    window.ticketDataFromServer = JSON.parse(ticketDataElement.textContent);
+                }
+                
+                if (userReviewElement) {
+                    currentUserReview = JSON.parse(userReviewElement.textContent);
+                }
+                
+                console.log('Server data loaded:', {
+                    packageMapping: window.packageMappingData,
+                    ticketData: window.ticketDataFromServer,
+                    userReview: currentUserReview
+                });
+            } catch (error) {
+                console.error('Error loading server data:', error);
+                // Fallback data
+                window.packageMappingData = { reguler: 1, terusan: 2 };
+                window.ticketDataFromServer = {};
+                currentUserReview = null;
+            }
+        }
+        
+        // Load data on DOM ready
+        document.addEventListener('DOMContentLoaded', loadServerData);
+        
+        // Package mapping - populated from server data
+        const packageMapping = window.packageMappingData || {'reguler': 1, 'terusan': 2};
+        
+        function getPackageIdByType(ticketType) {
+            // Use dynamic data if available, otherwise fallback
+            const mapping = window.packageMappingData || packageMapping;
+            return mapping[ticketType] || null;
+        }
+
+        function updateTicketDisplay() {
+            const display = document.getElementById('ticketCountDisplay');
+            display.textContent = `${ticketCount} tiket`;
+            
+            // Update decrease button state
+            const decreaseBtn = document.getElementById('decreaseBtn');
+            decreaseBtn.disabled = ticketCount <= 1;
+        }
+
+        function increaseTickets() {
+            if (ticketCount < 100) {
+                ticketCount++;
+                updateTicketDisplay();
+            }
+        }
+
+        function decreaseTickets() {
+            if (ticketCount > 1) {
+                ticketCount--;
+                updateTicketDisplay();
+            }
+        }
+
+        function searchTickets() {
+            const ticketType = document.getElementById('ticketType').value;
+            const visitDate = document.getElementById('visitDate').value;
+            
+            if (!visitDate) {
+                showNotification('Silakan pilih tanggal kunjungan', 'warning');
+                return;
+            }
+
+            // Check if user is authenticated
+            if (!isUserAuthenticated) {
+                showNotification('Anda perlu login untuk melakukan pemesanan.', 'warning');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
+
+            // Process booking directly without confirmation
+            processBooking(ticketType, visitDate, ticketCount);
+        }
+
+        function processBooking(ticketType, visitDate, ticketCount) {
+            // Show loading
+            const searchBtn = document.querySelector('.search-btn');
+            const originalText = searchBtn.textContent;
+            searchBtn.textContent = 'Memproses...';
+            searchBtn.disabled = true;
+
+            // Get CSRF token
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            // Get package_id based on ticket type
+            const packageId = getPackageIdByType(ticketType);
+            if (!packageId) {
+                showNotification('Paket tiket tidak ditemukan', 'error');
+                searchBtn.textContent = originalText;
+                searchBtn.disabled = false;
+                return;
+            }
+
+            // Make booking request
+            fetch('/ticket/book', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({
+                    package_id: packageId,
+                    visit_date: visitDate,
+                    quantity: ticketCount,
+                    booker_name: document.querySelector('meta[name="user-name"]').content,
+                    booker_email: document.querySelector('meta[name="user-email"]').content,
+                    booker_phone: document.querySelector('meta[name="user-phone"]').content || ''
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Proceed to payment
+                    initiatePayment(data.booking_id);
+                } else {
+                    showNotification(data.message || 'Terjadi kesalahan saat membuat booking', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Booking error:', error);
+                showNotification('Terjadi kesalahan saat membuat booking', 'error');
+            })
+            .finally(() => {
+                // Reset button
+                searchBtn.textContent = originalText;
+                searchBtn.disabled = false;
+            });
+        }
+
+        function initiatePayment(bookingId) {
+            // Get CSRF token
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch('/payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({
+                    booking_id: bookingId,
+                    booking_type: 'ticket'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.snap_token) {
+                    // Open Midtrans Snap
+                    window.snap.pay(data.snap_token, {
+                        onSuccess: function(result) {
+                            showNotification('Pembayaran berhasil!', 'success');
+                            setTimeout(() => {
+                                window.location.href = `/payment/success/${bookingId}`;
+                            }, 1500);
+                        },
+                        onPending: function(result) {
+                            showNotification('Pembayaran pending. Silakan selesaikan pembayaran Anda.', 'warning');
+                        },
+                        onError: function(result) {
+                            showNotification('Pembayaran gagal. Silakan coba lagi.', 'error');
+                        },
+                        onClose: function() {
+                            showNotification('Anda menutup popup pembayaran sebelum menyelesaikan pembayaran', 'warning');
+                        }
+                    });
+                } else {
+                    showNotification(data.message || 'Terjadi kesalahan saat memproses pembayaran', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Payment error:', error);
+                showNotification('Terjadi kesalahan saat memproses pembayaran', 'error');
+            });
+        }
+
+        // Review System Variables
+        let isEditMode = false;
+        let currentUserReview = null;
+
+        // Notification System
+        function showNotification(message, type = 'info', duration = 5000) {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => {
+                notification.remove();
+            });
+
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <button class="close-notification" onclick="this.parentElement.remove()">&times;</button>
+                <div>${message}</div>
+            `;
+
+            // Add to body
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            // Auto remove after duration
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }
+            }, duration);
+        }
+
+        // Review Modal Functions
+        function openAddReviewModal() {
+            isEditMode = false;
+            document.getElementById('reviewFormTitle').textContent = 'Tulis Review';
+            document.getElementById('submitReviewBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Review';
+            
+            // Reset form
+            document.getElementById('reviewForm').reset();
+            document.getElementById('ratingInput').value = '5';
+            document.getElementById('charCount').textContent = '0';
+            resetStarRating();
+            setStarRating(5);
+            hideImagePreview();
+            
+            document.getElementById('reviewFormOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('reviewFormModal').classList.add('active');
+            }, 10);
+        }
+
+        function openEditReviewModal() {
+            if (!currentUserReview) return;
+            
+            isEditMode = true;
+            document.getElementById('reviewFormTitle').textContent = 'Edit Review';
+            document.getElementById('submitReviewBtn').innerHTML = '<i class="fas fa-save"></i> Simpan Perubahan';
+            
+            // Fill form with existing data
+            document.getElementById('commentInput').value = currentUserReview.comment;
+            document.getElementById('ratingInput').value = currentUserReview.rating;
+            document.getElementById('charCount').textContent = currentUserReview.comment.length;
+            setStarRating(currentUserReview.rating);
+            
+            // Handle existing image
+            if (currentUserReview.image_url) {
+                showImagePreview(currentUserReview.image_url);
+            } else {
+                hideImagePreview();
+            }
+            
+            document.getElementById('reviewFormOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('reviewFormModal').classList.add('active');
+            }, 10);
+        }
+
+        function closeReviewFormModal() {
+            document.getElementById('reviewFormModal').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('reviewFormOverlay').style.display = 'none';
+            }, 300);
+        }
+
+        function showLoginAlert() {
+            showNotification('Silakan login terlebih dahulu untuk memberikan review.', 'warning');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        }
+
+        // Star Rating Functions
+        function setStarRating(rating) {
+            const stars = document.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+            document.getElementById('ratingInput').value = rating;
+        }
+
+        function resetStarRating() {
+            document.querySelectorAll('.star').forEach(star => {
+                star.classList.remove('active');
+            });
+        }
+
+        // Image Upload Functions
+        function showImagePreview(src) {
+            document.querySelector('.upload-placeholder').style.display = 'none';
+            document.getElementById('imagePreview').style.display = 'block';
+            document.getElementById('previewImg').src = src;
+        }
+
+        function hideImagePreview() {
+            document.querySelector('.upload-placeholder').style.display = 'block';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('previewImg').src = '';
+            document.getElementById('imageInput').value = '';
+        }
+
+        function removeImage() {
+            hideImagePreview();
+        }
+
+        // Delete User Review
+        function deleteUserReview() {
+            const deleteBtn = document.querySelector('.btn-delete-user-review');
+            
+            // If already in confirm state, proceed with deletion
+            if (deleteBtn.classList.contains('confirm-delete')) {
+                // Proceed with actual deletion
+                proceedWithDeletion();
+                return;
+            }
+            
+            // First click - show confirmation
+            showNotification('Klik tombol hapus sekali lagi untuk konfirmasi', 'warning', 3000);
+            deleteBtn.classList.add('confirm-delete');
+            deleteBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus';
+            
+            setTimeout(() => {
+                deleteBtn.classList.remove('confirm-delete');
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Hapus';
+            }, 3000);
+        }
+
+        function proceedWithDeletion() {
+
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch('/ticket/reviews', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    setTimeout(() => {
+                        location.reload(); // Reload to update UI
+                    }, 1500);
+                } else {
+                    showNotification(data.message || 'Terjadi kesalahan saat menghapus review', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Delete review error:', error);
+                showNotification('Terjadi kesalahan saat menghapus review', 'error');
+            });
+        }
+
+        // Initialize the page when DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load server data first
+            loadServerData();
+            
+            // Set minimum date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowString = tomorrow.toISOString().split('T')[0];
+            document.getElementById('visitDate').min = tomorrowString;
+            document.getElementById('visitDate').value = tomorrowString;
+            
+            // Initialize ticket counter display
+            updateTicketDisplay();
+
+            // Initialize star rating
+            document.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    setStarRating(rating);
+                });
+
+                star.addEventListener('mouseover', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    const stars = document.querySelectorAll('.star');
+                    stars.forEach((s, index) => {
+                        if (index < rating) {
+                            s.style.color = '#fbbf24';
+                        } else {
+                            s.style.color = '#ddd';
+                        }
+                    });
+                });
+            });
+
+            // Reset star colors on mouse leave
+            document.getElementById('starRating').addEventListener('mouseleave', function() {
+                const currentRating = parseInt(document.getElementById('ratingInput').value);
+                setStarRating(currentRating);
+            });
+
+            // Character counter for comment
+            document.getElementById('commentInput').addEventListener('input', function() {
+                document.getElementById('charCount').textContent = this.value.length;
+            });
+
+            // Image upload preview
+            document.getElementById('imageInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Validate file size (2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        showNotification('Ukuran file terlalu besar. Maksimal 2MB.', 'warning');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                        showNotification('File harus berupa gambar.', 'warning');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Show preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        showImagePreview(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Review form submission
+            document.getElementById('reviewForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const submitBtn = document.getElementById('submitReviewBtn');
+                const originalText = submitBtn.innerHTML;
+                
+                // Disable button and show loading
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+
+                const formData = new FormData(this);
+                const url = isEditMode ? '/ticket/reviews' : '/ticket/reviews';
+                const method = isEditMode ? 'PUT' : 'POST';
+
+                // Convert FormData to regular form data for PUT request
+                if (isEditMode) {
+                    const regularData = new FormData();
+                    regularData.append('_token', formData.get('_token'));
+                    regularData.append('_method', 'PUT');
+                    regularData.append('rating', formData.get('rating'));
+                    regularData.append('comment', formData.get('comment'));
+                    if (formData.get('image')) {
+                        regularData.append('image', formData.get('image'));
+                    }
+                    formData = regularData;
+                }
+
+                fetch(url, {
+                    method: 'POST', // Always POST for FormData with _method
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        closeReviewFormModal();
+                        setTimeout(() => {
+                            location.reload(); // Reload to update UI
+                        }, 1500);
+                    } else {
+                        showNotification(data.message || 'Terjadi kesalahan saat menyimpan review', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Review submission error:', error);
+                    showNotification('Terjadi kesalahan saat menyimpan review', 'error');
+                })
+                .finally(() => {
+                    // Reset button
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        });
     </script>
 </body>
 </html>

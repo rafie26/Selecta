@@ -625,7 +625,7 @@
         <div class="logo">
             <a href="{{ route('home') }}" class="logo-container">
                 <!-- Logo putih (default state) -->
-                <img src="/images/logo3.png" alt="Selecta" class="logo-default">
+                <img src="/images/logo4.png" alt="Selecta" class="logo-default">
                 <!-- Logo berwarna (hover state) -->
                 <img src="/images/logo2.png" alt="Selecta" class="logo-hover">
             </a>

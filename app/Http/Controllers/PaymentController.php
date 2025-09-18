@@ -39,6 +39,11 @@ class PaymentController extends Controller
             return $this->payHotelBooking($request);
         }
 
+        // Check if this is a ticket booking payment
+        if ($request->has('booking_id') && $request->has('booking_type') && $request->booking_type === 'ticket') {
+            return $this->payTicketBooking($request);
+        }
+
         $request->validate([
             'visit_date' => 'required|date|after:today',
             'packages' => 'required|array',
@@ -306,47 +311,90 @@ class PaymentController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    private function generateBarcode($booking)
+    public function payTicketBooking(Request $request)
     {
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
+
+        $user = Auth::user();
+        $booking = Booking::with(['bookingDetails.package'])->findOrFail($request->booking_id);
+
+        // Verify booking belongs to user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Booking tidak ditemukan atau tidak memiliki akses.'
+            ], 403);
+        }
+
+        // Check if booking is already paid
+        if ($booking->payment_status === 'paid') {
+            return response()->json([
+                'error' => true,
+                'message' => 'Booking sudah dibayar.'
+            ], 400);
+        }
+
         try {
-            $generator = new BarcodeGeneratorPNG();
-            
-            // Create barcode data with booking info and visitors
-            $visitors = $booking->visitors()->get();
-            $visitorNames = $visitors->pluck('name')->join(', ');
-            
-            $barcodeData = json_encode([
-                'booking_code' => $booking->booking_code,
-                'booker_name' => $booking->booker_name,
-                'booker_email' => $booking->booker_email,
-                'visit_date' => $booking->visit_date,
-                'total_amount' => $booking->total_amount,
-                'visitors' => $visitorNames,
-                'visitor_count' => $visitors->count(),
-                'generated_at' => now()->toDateTimeString()
+            // Prepare Midtrans transaction details
+            $orderId = 'TICKET-' . $booking->booking_code . '-' . time();
+            $booking->midtrans_order_id = $orderId;
+            $booking->save();
+
+            // Prepare item details for ticket booking
+            $itemDetails = [];
+            foreach ($booking->bookingDetails as $detail) {
+                $itemDetails[] = [
+                    'id' => 'ticket-' . $detail->package_id,
+                    'price' => $detail->unit_price,
+                    'quantity' => $detail->quantity,
+                    'name' => $detail->package->name,
+                    'category' => 'Ticket'
+                ];
+            }
+
+            // Prepare transaction data
+            $transactionDetails = [
+                'order_id' => $orderId,
+                'gross_amount' => $booking->total_amount,
+            ];
+
+            $customerDetails = [
+                'first_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+            ];
+
+            $params = [
+                'transaction_details' => $transactionDetails,
+                'customer_details' => $customerDetails,
+                'item_details' => $itemDetails,
+                'callbacks' => [
+                    'finish' => route('payment.success', $booking->id),
+                ]
+            ];
+
+            // Get Snap Token
+            $snapToken = Snap::getSnapToken($params);
+
+            return response()->json([
+                'snap_token' => $snapToken,
+                'booking_id' => $booking->id
             ]);
 
-            // Generate barcode image
-            $barcode = $generator->getBarcode($booking->booking_code, $generator::TYPE_CODE_128);
-            
-            // Save barcode image
-            $fileName = 'barcode_' . $booking->booking_code . '.png';
-            $filePath = 'barcodes/' . $fileName;
-            
-            // Create directory if not exists
-            if (!file_exists(public_path('storage/barcodes'))) {
-                mkdir(public_path('storage/barcodes'), 0755, true);
-            }
-            
-            file_put_contents(public_path('storage/' . $filePath), $barcode);
-            
-            // Update booking with barcode data
-            $booking->barcode_data = $barcodeData;
-            $booking->barcode_image_path = $filePath;
-            $booking->save();
-            
         } catch (\Exception $e) {
-            Log::error('Barcode generation failed: ' . $e->getMessage());
+            Log::error('Ticket payment processing failed', [
+                'booking_id' => $booking->id,
+                'error_message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Terjadi kesalahan internal. Silakan coba lagi nanti.'
+            ], 500);
         }
     }
 
@@ -362,5 +410,36 @@ class PaymentController extends Controller
         }
 
         return view('payment.success', compact('booking'));
+    }
+
+    private function generateBarcode($booking)
+    {
+        try {
+            $generator = new BarcodeGeneratorPNG();
+            $barcode = $generator->getBarcode($booking->booking_code, $generator::TYPE_CODE_128);
+            
+            // Save barcode to storage
+            $filename = 'barcodes/' . $booking->booking_code . '.png';
+            $path = storage_path('app/public/' . $filename);
+            
+            // Create directory if it doesn't exist
+            $directory = dirname($path);
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            file_put_contents($path, $barcode);
+            
+            // Update booking with barcode path
+            $booking->barcode_path = $filename;
+            $booking->save();
+            
+        } catch (\Exception $e) {
+            Log::error('Barcode generation failed', [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

@@ -156,7 +156,7 @@
                                                 {{ $detail->package->name }}
                                             </div>
                                             <div class="text-muted">
-                                                {{ $detail->quantity }} tiket @ Rp {{ number_format($detail->price) }}
+                                                {{ $detail->quantity }} tiket @ Rp {{ number_format($detail->unit_price) }}
                                             </div>
                                             @if($detail->package->description)
                                                 <div class="text-muted small">

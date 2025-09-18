@@ -63,9 +63,17 @@
                                 <span class="fw-medium text-success">Rp {{ number_format($package->price) }}</span>
                             </td>
                             <td>
-                                <span class="badge {{ $package->is_active ? 'bg-success' : 'bg-secondary' }}">
-                                    {{ $package->is_active ? 'Active' : 'Inactive' }}
-                                </span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input toggle-status" 
+                                           type="checkbox" 
+                                           data-id="{{ $package->id }}"
+                                           {{ $package->is_active ? 'checked' : '' }}>
+                                    <label class="form-check-label">
+                                        <span class="badge {{ $package->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                            {{ $package->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </label>
+                                </div>
                             </td>
                             <td>{{ $package->created_at->format('d M Y') }}</td>
                             <td>
@@ -164,6 +172,56 @@ $(document).ready(function() {
                 }
             });
         }
+    });
+    
+    // Handle status toggle
+    $('.toggle-status').on('change', function() {
+        const packageId = $(this).data('id');
+        const isChecked = $(this).is(':checked');
+        const $badge = $(this).siblings('label').find('.badge');
+        
+        $.ajax({
+            url: `/admin/packages/${packageId}/toggle-status`,
+            type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Update badge
+                    if (response.is_active) {
+                        $badge.removeClass('bg-secondary').addClass('bg-success').text('Active');
+                    } else {
+                        $badge.removeClass('bg-success').addClass('bg-secondary').text('Inactive');
+                    }
+                    
+                    // Show success message
+                    $('body').prepend(`
+                        <div class="alert alert-success alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999;">
+                            <i class="fas fa-check-circle me-2"></i>
+                            ${response.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `);
+                    
+                    // Auto dismiss after 3 seconds
+                    setTimeout(() => {
+                        $('.alert').alert('close');
+                    }, 3000);
+                } else {
+                    // Revert checkbox state
+                    $(this).prop('checked', !isChecked);
+                    alert(response.message || 'Terjadi kesalahan saat mengubah status.');
+                }
+            }.bind(this),
+            error: function(xhr) {
+                // Revert checkbox state
+                $(this).prop('checked', !isChecked);
+                console.log('Toggle error:', xhr);
+                const response = xhr.responseJSON;
+                alert(response?.message || 'Terjadi kesalahan saat mengubah status.');
+            }.bind(this)
+        });
     });
 });
 </script>
