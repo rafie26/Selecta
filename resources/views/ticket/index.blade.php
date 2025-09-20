@@ -334,16 +334,21 @@
             background: none;
             border: none;
             color: #26265A;
+            font-size: 0.9rem;
             font-weight: 500;
-            cursor: pointer;
             text-decoration: underline;
-            font-size: 0.85rem;
+            cursor: pointer;
             margin-top: 0.5rem;
-            padding: 0;
+            padding: 4px 8px;
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
         }
 
         .detail-btn:hover {
             color: #141430;
+            background-color: rgba(38, 38, 90, 0.1);
+            border-radius: 4px;
         }
 
         /* Facilities Simple Styles */
@@ -1378,7 +1383,7 @@
                                         </div>
                                         <div class="ticket-brief">
                                             <p>{{ $package->description ?: 'Paket wisata dengan fasilitas lengkap' }}</p>
-                                            <button class="detail-btn" data-ticket-type="{{ strtolower(str_replace('Tiket ', '', $package->name)) }}" onclick="openTicketModal(this.dataset.ticketType)">Detail</button>
+                                            <button class="detail-btn" data-ticket-type="{{ strtolower(str_replace('Tiket ', '', $package->name)) }}" onclick="console.log('Button clicked!', this.dataset.ticketType); openTicketModal(this.dataset.ticketType)">Detail</button>
                                         </div>
                                     </div>
                                 @endforeach
@@ -1844,6 +1849,8 @@
     <script>
         let currentReview = 0;
         const totalReviews = document.querySelectorAll('.review-card').length;
+        let isEditMode = false;
+        let currentReviewId = null;
         
         // Gallery images data - using images from gallery page
         const galleryImages = [
@@ -2000,6 +2007,10 @@
 
         // Ticket Modal Functions
         function openTicketModal(ticketType) {
+            console.log('Opening ticket modal for type:', ticketType);
+            console.log('Available server data:', window.ticketDataFromServer);
+            console.log('Available static data:', ticketData);
+            
             const modal = document.getElementById('ticketModal');
             const title = document.getElementById('ticketModalTitle');
             const includesList = document.getElementById('ticketIncludes');
@@ -2008,7 +2019,18 @@
             const termsList = document.getElementById('termsConditionsList');
             const additionalList = document.getElementById('additionalInfoList');
             
-            const data = ticketData[ticketType];
+            // Use current server data or fallback to static data
+            const currentTicketData = window.ticketDataFromServer || ticketData;
+            console.log('Using ticket data:', currentTicketData);
+            
+            const data = currentTicketData[ticketType];
+            
+            if (!data) {
+                console.error('Ticket data not found for type:', ticketType);
+                console.error('Available keys:', Object.keys(currentTicketData));
+                alert('Data tiket tidak ditemukan. Silakan coba lagi.');
+                return;
+            }
             
             title.textContent = data.title;
             
@@ -2311,8 +2333,7 @@
         }
 
         // Review System Variables
-        let isEditMode = false;
-        let currentUserReview = null;
+        // isEditMode and currentUserReview are already declared at the top of the script
 
         // Notification System
         function showNotification(message, type = 'info', duration = 5000) {
@@ -2375,6 +2396,7 @@
             if (!currentUserReview) return;
             
             isEditMode = true;
+            currentReviewId = currentUserReview.id;
             document.getElementById('reviewFormTitle').textContent = 'Edit Review';
             document.getElementById('submitReviewBtn').innerHTML = '<i class="fas fa-save"></i> Simpan Perubahan';
             
@@ -2399,6 +2421,19 @@
 
         function closeReviewFormModal() {
             document.getElementById('reviewFormModal').classList.remove('active');
+            // Reset form
+            document.getElementById('reviewForm').reset();
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('previewImg').src = '';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('charCount').textContent = '0';
+            setStarRating(0);
+            isEditMode = false;
+            currentReviewId = null;
+            imageRemoved = false; // Reset image removal flag
+            document.getElementById('reviewFormTitle').textContent = 'Tulis Review';
+            document.getElementById('submitReviewBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Review';
+            
             setTimeout(() => {
                 document.getElementById('reviewFormOverlay').style.display = 'none';
             }, 300);
@@ -2431,10 +2466,13 @@
         }
 
         // Image Upload Functions
+        let imageRemoved = false; // Flag to track if image should be removed
+        
         function showImagePreview(src) {
             document.querySelector('.upload-placeholder').style.display = 'none';
             document.getElementById('imagePreview').style.display = 'block';
             document.getElementById('previewImg').src = src;
+            imageRemoved = false; // Reset flag when showing image
         }
 
         function hideImagePreview() {
@@ -2446,6 +2484,7 @@
 
         function removeImage() {
             hideImagePreview();
+            imageRemoved = true; // Set flag to indicate image should be removed
         }
 
         // Delete User Review
@@ -2471,15 +2510,19 @@
         }
 
         function proceedWithDeletion() {
-
+            if (!currentUserReview) return;
+            
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            fetch('/ticket/reviews', {
-                method: 'DELETE',
+            fetch(`/ticket/reviews/${currentUserReview.id}`, {
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': token
-                }
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ _method: 'DELETE' })
             })
             .then(response => response.json())
             .then(data => {
@@ -2582,28 +2625,61 @@
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
 
-                const formData = new FormData(this);
-                const url = isEditMode ? '/ticket/reviews' : '/ticket/reviews';
-                const method = isEditMode ? 'PUT' : 'POST';
-
-                // Convert FormData to regular form data for PUT request
-                if (isEditMode) {
-                    const regularData = new FormData();
-                    regularData.append('_token', formData.get('_token'));
-                    regularData.append('_method', 'PUT');
-                    regularData.append('rating', formData.get('rating'));
-                    regularData.append('comment', formData.get('comment'));
-                    if (formData.get('image')) {
-                        regularData.append('image', formData.get('image'));
+                // Create form data
+                let formData = new FormData(this);
+                let url = '/ticket/reviews';
+                let isMultipart = false;
+                
+                // Handle edit mode
+                if (isEditMode && currentReviewId) {
+                    url = `/ticket/reviews/${currentReviewId}`;
+                    // Always use FormData for consistency
+                    formData.append('_method', 'PUT');
+                    
+                    // Add remove_image flag if image was removed
+                    if (imageRemoved) {
+                        formData.append('remove_image', '1');
                     }
-                    formData = regularData;
+                    
+                    isMultipart = true;
                 }
 
+                // Set headers
+                const headers = {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                };
+                
+                // Always use multipart for FormData to properly handle files
+                if (formData instanceof FormData) {
+                    // Let the browser set the correct Content-Type with boundary
+                    delete headers['Content-Type'];
+                }
+                
+                console.log('Sending request to:', url);
+                console.log('Request method:', isEditMode ? 'PUT' : 'POST');
+                console.log('Request headers:', headers);
+                
+                // Make the request
                 fetch(url, {
-                    method: 'POST', // Always POST for FormData with _method
-                    body: formData
+                    method: 'POST', // Laravel handles PUT/PATCH/DELETE via _method
+                    headers: headers,
+                    body: formData,
+                    credentials: 'same-origin'
                 })
-                .then(response => response.json())
+                .then(async response => {
+                    const data = await response.json().catch(() => ({}));
+                    
+                    if (!response.ok) {
+                        const error = new Error(data.message || 'Gagal memperbarui review');
+                        error.response = response;
+                        error.data = data;
+                        throw error;
+                    }
+                    
+                    return data;
+                })
                 .then(data => {
                     if (data.success) {
                         showNotification(data.message, 'success');
@@ -2617,7 +2693,22 @@
                 })
                 .catch(error => {
                     console.error('Review submission error:', error);
-                    showNotification('Terjadi kesalahan saat menyimpan review', 'error');
+                    let errorMessage = 'Terjadi kesalahan saat menyimpan review';
+                    
+                    if (error.response) {
+                        console.error('Response status:', error.response.status);
+                        console.error('Response data:', error.data);
+                        
+                        if (error.data && error.data.errors) {
+                            // Handle validation errors
+                            const errorMsgs = Object.values(error.data.errors).flat();
+                            errorMessage = errorMsgs.join('\n');
+                        } else if (error.data && error.data.message) {
+                            errorMessage = error.data.message;
+                        }
+                    }
+                    
+                    showNotification(errorMessage, 'error');
                 })
                 .finally(() => {
                     // Reset button

@@ -305,15 +305,24 @@ class TicketController extends Controller
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'required|string|min:10|max:1000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'remove_image' => 'nullable|boolean'
         ]);
 
         DB::beginTransaction();
         try {
             $imagePath = $review->image_path;
             
-            // Handle image upload
-            if ($request->hasFile('image')) {
+            // Handle image removal
+            if ($request->has('remove_image') && $request->remove_image) {
+                // User wants to remove the image
+                if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
+                $imagePath = null;
+            }
+            // Handle new image upload
+            elseif ($request->hasFile('image')) {
                 // Delete old image if exists
                 if ($imagePath && Storage::disk('public')->exists($imagePath)) {
                     Storage::disk('public')->delete($imagePath);
@@ -323,6 +332,7 @@ class TicketController extends Controller
                 $imageName = 'review_' . $user->id . '_' . time() . '.' . $image->getClientOriginalExtension();
                 $imagePath = $image->storeAs('reviews', $imageName, 'public');
             }
+            // If no file and no remove_image flag, keep existing image
 
             // Update review
             $review->update([
@@ -364,7 +374,7 @@ class TicketController extends Controller
     /**
      * Delete review
      */
-    public function deleteReview()
+    public function deleteReview($id)
     {
         if (!Auth::check()) {
             return response()->json([
@@ -374,7 +384,7 @@ class TicketController extends Controller
         }
 
         $user = Auth::user();
-        $review = Review::where('user_id', $user->id)->first();
+        $review = Review::where('user_id', $user->id)->where('id', $id)->first();
 
         if (!$review) {
             return response()->json([

@@ -104,8 +104,8 @@ Route::post('/ticket/book', [TicketController::class, 'book'])->name('ticket.boo
 // Review routes (require authentication)
 Route::middleware(['auth'])->group(function () {
     Route::post('/ticket/reviews', [TicketController::class, 'storeReview'])->name('ticket.reviews.store');
-    Route::put('/ticket/reviews', [TicketController::class, 'updateReview'])->name('ticket.reviews.update');
-    Route::delete('/ticket/reviews', [TicketController::class, 'deleteReview'])->name('ticket.reviews.delete');
+    Route::put('/ticket/reviews/{id}', [TicketController::class, 'updateReview'])->name('ticket.reviews.update');
+    Route::delete('/ticket/reviews/{id}', [TicketController::class, 'deleteReview'])->name('ticket.reviews.delete');
 });
 
 // Public review routes (no auth required)
