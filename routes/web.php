@@ -66,7 +66,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
     
     // Payment routes
-    Route::post('/payment', [PaymentController::class, 'pay'])->name('payment');
+    Route::post('/payment', [PaymentController::class, 'pay'])->name('payment.pay');
     Route::get('/payment/success/{bookingId}', [PaymentController::class, 'success'])->name('payment.success');
 });
 
@@ -85,7 +85,13 @@ Route::prefix('tickets')->name('tickets.')->group(function () {
 // Hotels
 Route::prefix('hotels')->name('hotels.')->group(function () {
     Route::get('/', [HotelController::class, 'index'])->name('index');
+    Route::get('/rooms', [HotelController::class, 'getRooms'])->name('rooms');
     Route::get('/{id}', [HotelController::class, 'show'])->name('show');
+    
+    // Protected routes (require authentication)
+    Route::middleware('auth')->group(function () {
+        Route::post('/book', [HotelController::class, 'bookRoom'])->name('book');
+    });
 });
 
 // Restaurants
@@ -133,9 +139,6 @@ Route::prefix('api')->name('api.')->group(function () {
     // Get hotel availability
     Route::post('/hotels/availability', [HotelController::class, 'checkAvailability'])->name('hotels.availability');
     
-    // Book hotel room
-    Route::post('/hotels/book', [HotelController::class, 'bookRoom'])->name('hotels.book');
-    
     // Get attraction pricing
     Route::get('/attractions/{id}/pricing', [AttractionController::class, 'pricing'])->name('attractions.pricing');
 });
@@ -173,6 +176,15 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::post('/packages/{id}/update', [AdminController::class, 'updatePackage'])->name('packages.update');
     Route::post('/packages/{id}/toggle-status', [AdminController::class, 'togglePackageStatus'])->name('packages.toggle-status');
     Route::delete('/packages/{id}', [AdminController::class, 'deletePackage'])->name('packages.delete');
+
+    // Hotel Photos CRUD Routes
+    Route::get('/hotel-photos', [AdminController::class, 'getHotelPhotos'])->name('hotel-photos.index');
+    Route::post('/hotel-photos', [AdminController::class, 'storeHotelPhoto'])->name('hotel-photos.store');
+    Route::put('/hotel-photos/{id}', [AdminController::class, 'updateHotelPhoto'])->name('hotel-photos.update');
+    Route::delete('/hotel-photos/{id}', [AdminController::class, 'deleteHotelPhoto'])->name('hotel-photos.delete');
+    Route::post('/hotel-photos/{id}/toggle-featured', [AdminController::class, 'togglePhotoFeatured'])->name('hotel-photos.toggle-featured');
+    Route::post('/hotel-photos/{id}/toggle-status', [AdminController::class, 'togglePhotoStatus'])->name('hotel-photos.toggle-status');
+    Route::post('/hotel-photos/update-order', [AdminController::class, 'updatePhotosOrder'])->name('hotel-photos.update-order');
 });
 
 /*

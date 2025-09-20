@@ -12,6 +12,8 @@ class RoomType extends Model
         'description',
         'price_per_night',
         'max_occupancy',
+        'max_adults',
+        'max_children',
         'total_rooms',
         'available_rooms',
         'amenities',
@@ -29,6 +31,21 @@ class RoomType extends Model
     public function roomBookings(): HasMany
     {
         return $this->hasMany(RoomBooking::class);
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(HotelPhoto::class);
+    }
+
+    public function activePhotos(): HasMany
+    {
+        return $this->hasMany(HotelPhoto::class)->where('is_active', true)->orderBy('sort_order');
+    }
+
+    public function featuredPhoto()
+    {
+        return $this->hasOne(HotelPhoto::class)->where('is_featured', true)->where('is_active', true);
     }
 
     public function scopeActive($query)

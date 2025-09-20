@@ -8,12 +8,14 @@ use App\Models\Booking;
 use App\Models\Package;
 use App\Models\RoomBooking;
 use App\Models\RoomType;
+use App\Models\HotelPhoto;
 use App\Services\MidtransService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
@@ -506,6 +508,8 @@ class AdminController extends Controller
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'price_per_night' => 'required|numeric|min:0',
+                'max_adults' => 'required|integer|min:1',
+                'max_children' => 'required|integer|min:0',
                 'max_occupancy' => 'required|integer|min:1',
                 'total_rooms' => 'required|integer|min:1'
             ]);
@@ -537,6 +541,8 @@ class AdminController extends Controller
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'price_per_night' => 'required|numeric|min:0',
+                'max_adults' => 'required|integer|min:1',
+                'max_children' => 'required|integer|min:0',
                 'max_occupancy' => 'required|integer|min:1',
                 'total_rooms' => 'required|integer|min:1'
             ]);
@@ -949,6 +955,421 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mengubah status package.'
+            ], 500);
+        }
+    }
+
+    // ============ HOTEL PHOTOS CRUD METHODS ============
+
+    /**
+     * Get hotel photos for a specific room type or all photos
+     */
+    public function getHotelPhotos(Request $request)
+    {
+        try {
+            $query = HotelPhoto::with('roomType');
+
+            // Filter by room type if specified
+            if ($request->filled('room_type_id')) {
+                $query->where('room_type_id', $request->room_type_id);
+            }
+
+            // Filter by category if specified
+            if ($request->filled('category')) {
+                $query->where('category', $request->category);
+            }
+
+            // Filter by active status
+            if ($request->filled('is_active')) {
+                $query->where('is_active', $request->is_active);
+            }
+
+            $photos = $query->orderBy('sort_order')->orderBy('created_at', 'desc')->get();
+
+            return response()->json([
+                'success' => true,
+                'photos' => $photos->map(function($photo) {
+                    return [
+                        'id' => $photo->id,
+                        'title' => $photo->title,
+                        'description' => $photo->description,
+                        'image_url' => $photo->image_url,
+                        'image_path' => $photo->image_path,
+                        'category' => $photo->category,
+                        'room_type' => $photo->roomType ? $photo->roomType->name : 'Umum',
+                        'room_type_id' => $photo->room_type_id,
+                        'sort_order' => $photo->sort_order,
+                        'is_featured' => $photo->is_featured,
+                        'is_active' => $photo->is_active,
+                        'created_at' => $photo->created_at->format('d M Y H:i')
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get hotel photos', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil foto hotel.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Store new hotel photo
+     */
+    public function storeHotelPhoto(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'title' => 'nullable|string|max:255',
+                'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // 5MB max
+                'room_type_id' => 'nullable|exists:room_types,id',
+                'sort_order' => 'nullable|integer|min:0',
+                'is_featured' => 'nullable|in:0,1,true,false,on',
+                'is_active' => 'nullable|in:0,1,true,false,on'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // Handle file upload
+            $image = $request->file('image');
+            $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            
+            // Ensure directory exists
+            $storagePath = storage_path('app/public/hotel_photos');
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+            }
+            
+            $path = $image->storeAs('hotel_photos', $filename, 'public');
+
+            // Create photo record
+            $photoData = [
+                'title' => $request->title,
+                'description' => null,
+                'image_path' => $path,
+                'category' => $request->room_type_id ? 'room' : 'general',
+                'room_type_id' => $request->room_type_id,
+                'sort_order' => $request->sort_order ?? 0,
+                'is_featured' => $request->boolean('is_featured', false),
+                'is_active' => $request->boolean('is_active', true)
+            ];
+
+            $photo = HotelPhoto::create($photoData);
+
+            DB::commit();
+
+            Log::info('Hotel photo uploaded', [
+                'photo_id' => $photo->id,
+                'filename' => $filename,
+                'category' => $photo->category,
+                'room_type_id' => $photo->room_type_id,
+                'uploaded_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto hotel berhasil diupload!',
+                'photo' => [
+                    'id' => $photo->id,
+                    'title' => $photo->title,
+                    'description' => $photo->description,
+                    'image_url' => $photo->image_url,
+                    'category' => $photo->category,
+                    'room_type_id' => $photo->room_type_id,
+                    'is_featured' => $photo->is_featured,
+                    'is_active' => $photo->is_active
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Failed to upload hotel photo', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupload foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update hotel photo
+     */
+    public function updateHotelPhoto(Request $request, $id)
+    {
+        try {
+            $photo = HotelPhoto::findOrFail($id);
+
+            $validator = Validator::make($request->all(), [
+                'title' => 'nullable|string|max:255',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120', // 5MB max
+                'room_type_id' => 'nullable|exists:room_types,id',
+                'sort_order' => 'nullable|integer|min:0',
+                'is_featured' => 'nullable|in:0,1,true,false,on',
+                'is_active' => 'nullable|in:0,1,true,false,on'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $updateData = [
+                'title' => $request->title,
+                'description' => null,
+                'category' => $request->room_type_id ? 'room' : 'general',
+                'room_type_id' => $request->room_type_id,
+                'sort_order' => $request->sort_order ?? $photo->sort_order,
+                'is_featured' => $request->boolean('is_featured', $photo->is_featured),
+                'is_active' => $request->boolean('is_active', $photo->is_active)
+            ];
+
+            // Handle new image upload if provided
+            if ($request->hasFile('image')) {
+                // Delete old image
+                if ($photo->image_path && Storage::disk('public')->exists($photo->image_path)) {
+                    Storage::disk('public')->delete($photo->image_path);
+                }
+
+                // Upload new image
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('hotel_photos', $filename, 'public');
+                $updateData['image_path'] = $path;
+            }
+
+            $photo->update($updateData);
+
+            DB::commit();
+
+            Log::info('Hotel photo updated', [
+                'photo_id' => $photo->id,
+                'updated_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto hotel berhasil diupdate!',
+                'photo' => [
+                    'id' => $photo->id,
+                    'title' => $photo->title,
+                    'description' => $photo->description,
+                    'image_url' => $photo->image_url,
+                    'category' => $photo->category,
+                    'room_type_id' => $photo->room_type_id,
+                    'is_featured' => $photo->is_featured,
+                    'is_active' => $photo->is_active
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Failed to update hotel photo', [
+                'photo_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupdate foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete hotel photo
+     */
+    public function deleteHotelPhoto($id)
+    {
+        try {
+            $photo = HotelPhoto::findOrFail($id);
+
+            DB::beginTransaction();
+
+            // Delete image file
+            if ($photo->image_path && Storage::disk('public')->exists($photo->image_path)) {
+                Storage::disk('public')->delete($photo->image_path);
+            }
+
+            $photoTitle = $photo->title;
+            $photo->delete();
+
+            DB::commit();
+
+            Log::info('Hotel photo deleted', [
+                'photo_id' => $id,
+                'photo_title' => $photoTitle,
+                'deleted_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto hotel berhasil dihapus!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Failed to delete hotel photo', [
+                'photo_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle photo featured status
+     */
+    public function togglePhotoFeatured($id)
+    {
+        try {
+            $photo = HotelPhoto::findOrFail($id);
+            $photo->is_featured = !$photo->is_featured;
+            $photo->save();
+
+            Log::info('Hotel photo featured status toggled', [
+                'photo_id' => $photo->id,
+                'new_featured_status' => $photo->is_featured,
+                'updated_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status featured foto berhasil diubah!',
+                'is_featured' => $photo->is_featured
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle photo featured status', [
+                'photo_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status featured.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle photo active status
+     */
+    public function togglePhotoStatus($id)
+    {
+        try {
+            $photo = HotelPhoto::findOrFail($id);
+            $photo->is_active = !$photo->is_active;
+            $photo->save();
+
+            Log::info('Hotel photo status toggled', [
+                'photo_id' => $photo->id,
+                'new_status' => $photo->is_active ? 'active' : 'inactive',
+                'updated_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status foto berhasil diubah!',
+                'is_active' => $photo->is_active
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle photo status', [
+                'photo_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status foto.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update photos sort order
+     */
+    public function updatePhotosOrder(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'photos' => 'required|array',
+                'photos.*.id' => 'required|exists:hotel_photos,id',
+                'photos.*.sort_order' => 'required|integer|min:0'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            foreach ($request->photos as $photoData) {
+                HotelPhoto::where('id', $photoData['id'])
+                    ->update(['sort_order' => $photoData['sort_order']]);
+            }
+
+            DB::commit();
+
+            Log::info('Hotel photos order updated', [
+                'photos_count' => count($request->photos),
+                'updated_by' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Urutan foto berhasil diupdate!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            Log::error('Failed to update photos order', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupdate urutan foto.'
             ], 500);
         }
     }
