@@ -1855,13 +1855,13 @@ function updateSliderPosition(roomId) {
                                     </div>
                                     <div class="room-description">${room.description}</div>
                                     <div class="room-amenities">
-                                        ${room.amenities.slice(0, 6).map(amenity => `
+                                        ${(room.amenities || []).slice(0, 6).map(amenity => `
                                             <div class="amenity">
-                                                <i class="fas fa-check"></i>
+                                                <i class="fas fa-check" style="color: #16a34a;"></i>
                                                 <span>${amenity}</span>
                                             </div>
                                         `).join('')}
-                                        ${room.amenities.length > 6 ? `
+                                        ${(room.amenities || []).length > 6 ? `
                                             <div class="amenity" style="color: #26265A; font-weight: 500;">
                                                 <i class="fas fa-plus"></i>
                                                 <span>+${room.amenities.length - 6} fasilitas lainnya</span>
@@ -1944,7 +1944,7 @@ function updateSliderPosition(roomId) {
         <div style="margin-bottom: 1.5rem;">
             <h4 style="margin-bottom: 1rem; color: #26265A;">Fasilitas Lengkap:</h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
-                ${room.amenities.map(amenity => `
+                ${(room.amenities || []).map(amenity => `
                     <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
                         <i class="fas fa-check" style="color: #16a34a;"></i>
                         <span>${amenity}</span>
@@ -2463,6 +2463,6 @@ function updateSliderPosition(roomId) {
             loadRooms();
         });
     </script>
-        {{-- <x-footer /> --}}
+      <x-footer /> 
 </body>
 </html>

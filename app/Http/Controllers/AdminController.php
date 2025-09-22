@@ -511,7 +511,9 @@ class AdminController extends Controller
                 'max_adults' => 'required|integer|min:1',
                 'max_children' => 'required|integer|min:0',
                 'max_occupancy' => 'required|integer|min:1',
-                'total_rooms' => 'required|integer|min:1'
+                'total_rooms' => 'required|integer|min:1',
+                'amenities' => 'nullable|array',
+                'amenities.*' => 'string|max:255'
             ]);
 
             $validated['is_active'] = $request->has('is_active') ? true : false;
@@ -544,7 +546,9 @@ class AdminController extends Controller
                 'max_adults' => 'required|integer|min:1',
                 'max_children' => 'required|integer|min:0',
                 'max_occupancy' => 'required|integer|min:1',
-                'total_rooms' => 'required|integer|min:1'
+                'total_rooms' => 'required|integer|min:1',
+                'amenities' => 'nullable|array',
+                'amenities.*' => 'string|max:255'
             ]);
 
             $validated['is_active'] = $request->has('is_active') ? true : false;

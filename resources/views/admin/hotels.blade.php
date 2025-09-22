@@ -112,6 +112,7 @@
                                             data-max-children="{{ $roomType->max_children ?? 0 }}"
                                             data-total-rooms="{{ $roomType->total_rooms }}"
                                             data-active="{{ $roomType->is_active }}"
+                                            data-amenities='@json($roomType->amenities ?? [])'
                                             title="Edit Tipe Kamar">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -246,6 +247,88 @@
                             </label>
                         </div>
                     </div>
+                    
+                    <!-- Amenities Section -->
+                    <div class="mb-3">
+                        <label class="form-label">Fasilitas Kamar</label>
+                        <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="AC Central" id="amenity1">
+                                        <label class="form-check-label" for="amenity1">AC Central</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="WiFi Gratis 50 Mbps" id="amenity2">
+                                        <label class="form-check-label" for="amenity2">WiFi Gratis 50 Mbps</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="TV LED 32\" + Cable" id="amenity3">
+                                        <label class="form-check-label" for="amenity3">TV LED 32" + Cable</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kamar Mandi Pribadi + Shower" id="amenity4">
+                                        <label class="form-check-label" for="amenity4">Kamar Mandi Pribadi + Shower</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Tea/Coffee Maker" id="amenity5">
+                                        <label class="form-check-label" for="amenity5">Tea/Coffee Maker</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kulkas mini" id="amenity6">
+                                        <label class="form-check-label" for="amenity6">Kulkas mini</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kasur Queen Size" id="amenity7">
+                                        <label class="form-check-label" for="amenity7">Kasur Queen Size</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Meja Kerja" id="amenity8">
+                                        <label class="form-check-label" for="amenity8">Meja Kerja</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Lemari Pakaian" id="amenity9">
+                                        <label class="form-check-label" for="amenity9">Lemari Pakaian</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Hair Dryer" id="amenity10">
+                                        <label class="form-check-label" for="amenity10">Hair Dryer</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Safe Deposit Box" id="amenity11">
+                                        <label class="form-check-label" for="amenity11">Safe Deposit Box</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Room Service 24 Jam" id="amenity12">
+                                        <label class="form-check-label" for="amenity12">Room Service 24 Jam</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">Pilih fasilitas yang tersedia di tipe kamar ini</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -324,6 +407,88 @@
                                 Aktif
                             </label>
                         </div>
+                    </div>
+                    
+                    <!-- Amenities Section for Edit -->
+                    <div class="mb-3">
+                        <label class="form-label">Fasilitas Kamar</label>
+                        <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <div class="row g-2" id="editAmenitiesContainer">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="AC Central" id="edit_amenity1">
+                                        <label class="form-check-label" for="edit_amenity1">AC Central</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="WiFi Gratis 50 Mbps" id="edit_amenity2">
+                                        <label class="form-check-label" for="edit_amenity2">WiFi Gratis 50 Mbps</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="TV LED 32\" + Cable" id="edit_amenity3">
+                                        <label class="form-check-label" for="edit_amenity3">TV LED 32" + Cable</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kamar Mandi Pribadi + Shower" id="edit_amenity4">
+                                        <label class="form-check-label" for="edit_amenity4">Kamar Mandi Pribadi + Shower</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Tea/Coffee Maker" id="edit_amenity5">
+                                        <label class="form-check-label" for="edit_amenity5">Tea/Coffee Maker</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kulkas mini" id="edit_amenity6">
+                                        <label class="form-check-label" for="edit_amenity6">Kulkas mini</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Kasur Queen Size" id="edit_amenity7">
+                                        <label class="form-check-label" for="edit_amenity7">Kasur Queen Size</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Meja Kerja" id="edit_amenity8">
+                                        <label class="form-check-label" for="edit_amenity8">Meja Kerja</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Lemari Pakaian" id="edit_amenity9">
+                                        <label class="form-check-label" for="edit_amenity9">Lemari Pakaian</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Hair Dryer" id="edit_amenity10">
+                                        <label class="form-check-label" for="edit_amenity10">Hair Dryer</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Safe Deposit Box" id="edit_amenity11">
+                                        <label class="form-check-label" for="edit_amenity11">Safe Deposit Box</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="amenities[]" value="Room Service 24 Jam" id="edit_amenity12">
+                                        <label class="form-check-label" for="edit_amenity12">Room Service 24 Jam</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">Pilih fasilitas yang tersedia di tipe kamar ini</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -617,6 +782,15 @@ $(document).ready(function() {
         $('#edit_max_occupancy').val(occupancy);
         $('#edit_total_rooms').val(totalRooms);
         $('#edit_is_active').prop('checked', isActive);
+        
+        // Handle amenities
+        const amenities = $(this).data('amenities') || [];
+        $('#editAmenitiesContainer input[type="checkbox"]').prop('checked', false);
+        if (Array.isArray(amenities)) {
+            amenities.forEach(function(amenity) {
+                $('#editAmenitiesContainer input[value="' + amenity + '"]').prop('checked', true);
+            });
+        }
         
         $('#editRoomTypeModal').modal('show');
     });
