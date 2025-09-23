@@ -300,7 +300,13 @@
                 <i class="fas fa-check"></i>
             </div>
             <div class="success-title">Pembayaran Berhasil!</div>
-            <div class="success-subtitle">Tiket Anda sudah siap digunakan</div>
+            <div class="success-subtitle">
+                @if($booking->payment_status === 'paid')
+                    Tiket Anda sudah siap digunakan
+                @else
+                    Status pembayaran sedang diproses...
+                @endif
+            </div>
         </div>
         
         <div class="ticket-body">
@@ -370,9 +376,15 @@
                     <i class="fas fa-download"></i>
                     Simpan Tiket
                 </button>
-                <a href="{{ route('tickets.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-home"></i>
-                    Kembali
+                <a href="{{ route('booking-history.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-history"></i>
+                    Riwayat Pemesanan
+                </a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ route('tickets.index') }}" style="color: #64748b; text-decoration: none; font-size: 14px;">
+                    <i class="fas fa-home"></i> Kembali ke Beranda
                 </a>
             </div>
         </div>

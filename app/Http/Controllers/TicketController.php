@@ -100,6 +100,7 @@ class TicketController extends Controller
             // Create booking
             $booking = Booking::create([
                 'booking_code' => $bookingCode,
+                'booking_type' => 'ticket',
                 'user_id' => $user->id,
                 'booker_name' => $request->booker_name,
                 'booker_email' => $request->booker_email,

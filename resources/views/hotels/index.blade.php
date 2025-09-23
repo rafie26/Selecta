@@ -66,18 +66,38 @@
             to { transform: rotate(360deg); }
         }
 
-        .hero-section {
-            position: relative;
-            height: 60vh;
-            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
-                        url('/images/hotel4.png');
-            background-size: cover;
-            background-position: center 70%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            color: white;
-        }
+        
+/* Replace the existing .hero-section rule with this */
+.hero-section {
+    position: relative;
+    height: 60vh;
+    background: linear-gradient(rgb(255, 255, 255), rgba(255, 255, 255, 0.3)), 
+                url('{{ asset("images/hotel4.png") }}');
+    background-size: cover;
+    background-position: center 50%;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: white;
+}
+
+/* Fallback if the main image fails */
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
+                url('/images/hotel4.jpg'), /* Try .jpg as fallback */
+                url('./images/hotel4.png'), /* Relative path fallback */
+                #26265A; /* Color fallback if no image loads */
+    background-size: cover;
+    background-position: center;
+    z-index: -1;
+}
 
         .hero-section::after {
             content: '';
@@ -1349,8 +1369,10 @@
     @endphp
 
     <!-- Server Configuration (Hidden from JS Linter) -->
+    <div id="hotel-config" style="display: none;" data-config="{{ base64_encode(json_encode($hotelConfig)) }}"></div>
     <script type="text/javascript">
-        window.hotelConfig = @json($hotelConfig);
+        const configElement = document.getElementById('hotel-config');
+        window.hotelConfig = JSON.parse(atob(configElement.dataset.config));
     </script>
 
     <script>

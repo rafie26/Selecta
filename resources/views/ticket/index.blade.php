@@ -605,9 +605,12 @@
             min-width: 100%;
             padding: 1.5rem;
             background: #f8f9fa;
-            border-radius: 8px;
-            margin-right: 1rem;
-            min-height: 220px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .reviewer-info {
@@ -648,6 +651,27 @@
             font-size: 0.85rem;
             line-height: 1.4;
             color: #555;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-height: 5.6em; /* 4 lines * 1.4 line-height */
+            word-wrap: break-word;
+            hyphens: auto;
+            flex: 1;
+        }
+
+        .review-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .review-media {
+            margin-top: auto;
+            padding-top: 0.5rem;
         }
 
         .carousel-nav {
@@ -1534,22 +1558,24 @@
                                             <div class="review-date">{{ $review->created_at->diffForHumans() }}</div>
                                         </div>
                                     </div>
-                                    <div class="review-rating">
-                                        @for($i = 1; $i <= 5; $i++)
-                                            @if($i <= $review->rating)
-                                                ★
-                                            @else
-                                                ☆
-                                            @endif
-                                        @endfor
-                                        {{ $review->rating }}/5
-                                    </div>
-                                    <p class="review-text">{{ $review->comment }}</p>
-                                    @if($review->image_url)
-                                        <div class="review-media">
-                                            <img src="{{ $review->image_url }}" alt="Review Photo" class="review-image">
+                                    <div class="review-content">
+                                        <div class="review-rating">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                @if($i <= $review->rating)
+                                                    ★
+                                                @else
+                                                    ☆
+                                                @endif
+                                            @endfor
+                                            {{ $review->rating }}/5
                                         </div>
-                                    @endif
+                                        <p class="review-text">{{ $review->comment }}</p>
+                                        @if($review->image_url)
+                                            <div class="review-media">
+                                                <img src="{{ $review->image_url }}" alt="Review Photo" class="review-image">
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             @endforeach
                         @else

@@ -173,7 +173,7 @@ class PaymentController extends Controller
         ]);
 
         $user = Auth::user();
-        $booking = Booking::with(['roomBooking.roomType'])->findOrFail($request->booking_id);
+        $booking = Booking::where('booking_type', 'hotel')->findOrFail($request->booking_id);
 
         // Verify booking belongs to user
         if ($booking->user_id !== $user->id) {
@@ -197,28 +197,53 @@ class PaymentController extends Controller
             $booking->midtrans_order_id = $orderId;
             $booking->save();
 
-            // Prepare item details for hotel booking
-            $roomBooking = $booking->roomBooking;
-            $itemDetails = [
-                [
-                    'id' => 'hotel-room-' . $roomBooking->room_type_id,
-                    'price' => $roomBooking->room_rate_per_night,
-                    'quantity' => $roomBooking->number_of_rooms * $roomBooking->nights,
-                    'name' => $roomBooking->roomType->name . ' - ' . $roomBooking->nights . ' malam',
-                    'category' => 'Hotel Room'
-                ]
+            // Decode hotel rooms data
+            $hotelRoomsData = json_decode($booking->hotel_rooms_data, true) ?? [];
+            
+            // Prepare item details for hotel booking with breakdown
+            $itemDetails = [];
+            
+            // Add subtotal as main item
+            $itemDetails[] = [
+                'id' => 'hotel-subtotal',
+                'price' => $booking->subtotal,
+                'quantity' => 1,
+                'name' => 'Hotel Room Booking - ' . $booking->nights . ' malam',
+                'category' => 'Hotel Room'
             ];
+            
+            // Add tax as separate item
+            if ($booking->tax_amount > 0) {
+                $itemDetails[] = [
+                    'id' => 'hotel-tax',
+                    'price' => $booking->tax_amount,
+                    'quantity' => 1,
+                    'name' => 'Pajak (11%)',
+                    'category' => 'Tax'
+                ];
+            }
+            
+            // Add service charge as separate item
+            if ($booking->service_amount > 0) {
+                $itemDetails[] = [
+                    'id' => 'hotel-service',
+                    'price' => $booking->service_amount,
+                    'quantity' => 1,
+                    'name' => 'Biaya Layanan (5%)',
+                    'category' => 'Service'
+                ];
+            }
 
-            // Prepare transaction data
+            // Prepare transaction data with final total amount (including tax and service)
             $transactionDetails = [
                 'order_id' => $orderId,
-                'gross_amount' => $booking->total_amount,
+                'gross_amount' => $booking->total_amount, // This already includes tax and service
             ];
 
             $customerDetails = [
-                'first_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone ?? '',
+                'first_name' => $booking->booker_name,
+                'email' => $booking->booker_email,
+                'phone' => $booking->booker_phone ?? '',
             ];
 
             $params = [
@@ -409,7 +434,59 @@ class PaymentController extends Controller
             return redirect()->route('tickets.index')->with('error', 'Booking tidak ditemukan');
         }
 
+        // SELALU update status ke paid ketika user sampai di halaman success
+        // Ini berarti pembayaran berhasil dilakukan
+        if ($booking->payment_status !== 'paid') {
+            $booking->update([
+                'payment_status' => 'paid',
+                'paid_at' => now(),
+                'payment_method' => 'midtrans_payment'
+            ]);
+            
+            // Generate QR code when payment is successful
+            if (!$booking->qr_code) {
+                $booking->qr_code = $booking->generateQRCode();
+                $booking->save();
+            }
+            
+            $this->generateBarcode($booking);
+        }
+
         return view('payment.success', compact('booking'));
+    }
+
+    public function manualUpdateStatus(Request $request, $bookingId)
+    {
+        $booking = Booking::where('id', $bookingId)
+                          ->where('user_id', Auth::id())
+                          ->first();
+
+        if (!$booking) {
+            return response()->json(['error' => 'Booking tidak ditemukan'], 404);
+        }
+
+        if ($booking->payment_status !== 'pending') {
+            return response()->json(['error' => 'Booking sudah diproses'], 400);
+        }
+
+        $booking->update([
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+            'payment_method' => 'manual_update'
+        ]);
+
+        // Generate QR code when payment is successful
+        if (!$booking->qr_code) {
+            $booking->qr_code = $booking->generateQRCode();
+            $booking->save();
+        }
+        
+        $this->generateBarcode($booking);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pembayaran berhasil diupdate!'
+        ]);
     }
 
     private function generateBarcode($booking)

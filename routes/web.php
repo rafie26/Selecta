@@ -14,6 +14,7 @@ use App\Http\Controllers\AttractionController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BookingHistoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,6 +69,13 @@ Route::middleware(['auth'])->group(function () {
     // Payment routes
     Route::post('/payment', [PaymentController::class, 'pay'])->name('payment.pay');
     Route::get('/payment/success/{bookingId}', [PaymentController::class, 'success'])->name('payment.success');
+    Route::post('/payment/manual-update/{bookingId}', [PaymentController::class, 'manualUpdateStatus'])->name('payment.manual-update');
+    
+    // Booking History routes
+    Route::get('/riwayat-pemesanan', [BookingHistoryController::class, 'index'])->name('booking-history.index');
+    Route::get('/riwayat-pemesanan/{id}', [BookingHistoryController::class, 'show'])->name('booking-history.show');
+    Route::post('/riwayat-pemesanan/{id}/check-in-time', [BookingHistoryController::class, 'updateCheckInTime'])->name('booking-history.check-in-time');
+    Route::post('/riwayat-pemesanan/{id}/check-out-time', [BookingHistoryController::class, 'updateCheckOutTime'])->name('booking-history.check-out-time');
 });
 
 /*

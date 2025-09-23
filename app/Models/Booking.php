@@ -24,7 +24,21 @@ class Booking extends Model
         'midtrans_response',
         'paid_at',
         'checked_in_at',
-        'user_id'
+        'user_id',
+        // Hotel specific fields
+        'booking_type',
+        'check_out_date',
+        'nights',
+        'total_adults',
+        'total_children',
+        'children_ages',
+        'hotel_rooms_data',
+        'subtotal',
+        'tax_amount',
+        'service_amount',
+        // Check-in/out times
+        'check_in_time',
+        'check_out_time'
     ];
 
     protected $casts = [
@@ -32,7 +46,14 @@ class Booking extends Model
         'visit_date' => 'date',
         'paid_at' => 'datetime',
         'checked_in_at' => 'datetime',
-        'total_amount' => 'decimal:2'
+        'total_amount' => 'decimal:2',
+        // Hotel specific casts
+        'check_out_date' => 'date',
+        'children_ages' => 'array',
+        'hotel_rooms_data' => 'array',
+        'subtotal' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'service_amount' => 'decimal:2'
     ];
 
     public function user(): BelongsTo

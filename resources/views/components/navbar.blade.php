@@ -674,10 +674,14 @@
                     
                     <!-- Dropdown Menu -->
                     <div class="profile-dropdown" id="profileDropdown">
-                        <div class="dropdown-item">
+                        <a href="{{ route('profile') }}" class="dropdown-item">
                             <i class="fas fa-user"></i>
                             <span>Lihat Profil</span>
-                        </div>
+                        </a>
+                        <a href="{{ route('booking-history.index') }}" class="dropdown-item">
+                            <i class="fas fa-history"></i>
+                            <span>Riwayat Pemesanan</span>
+                        </a>
                         <div class="dropdown-item">
                             <i class="fas fa-cog"></i>
                             <span>Pengaturan</span>

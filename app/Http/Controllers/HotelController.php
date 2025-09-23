@@ -309,27 +309,15 @@ class HotelController extends Controller
     {
         $rates = [];
         
-        // Basic rate
+        // Basic rate only
         $rates[] = [
-            'name' => $room->name . ' Standard',
+            'name' => $room->name,
             'price' => $room->price_per_night,
             'features' => 'Fasilitas standar kamar',
             'breakfast' => false,
             'cancellation' => true,
             'description' => 'Paket standar dengan fasilitas lengkap'
         ];
-
-        // Premium rate with breakfast
-        if ($room->price_per_night >= 400000) {
-            $rates[] = [
-                'name' => $room->name . ' Premium',
-                'price' => $room->price_per_night + 100000,
-                'features' => 'Sarapan + late check-out + welcome drink',
-                'breakfast' => true,
-                'cancellation' => true,
-                'description' => 'Paket premium dengan sarapan dan fasilitas tambahan'
-            ];
-        }
 
         return $rates;
     }
