@@ -69,7 +69,6 @@ Route::middleware(['auth'])->group(function () {
     // Payment routes
     Route::post('/payment', [PaymentController::class, 'pay'])->name('payment.pay');
     Route::get('/payment/success/{bookingId}', [PaymentController::class, 'success'])->name('payment.success');
-    Route::post('/payment/manual-update/{bookingId}', [PaymentController::class, 'manualUpdateStatus'])->name('payment.manual-update');
     
     // Booking History routes
     Route::get('/riwayat-pemesanan', [BookingHistoryController::class, 'index'])->name('booking-history.index');

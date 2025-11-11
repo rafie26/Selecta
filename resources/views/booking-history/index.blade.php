@@ -167,12 +167,6 @@
                                                     class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                                 <i class="fas fa-credit-card mr-1"></i> Bayar Sekarang
                                             </button>
-                                            <!-- Manual Update Status Button (for testing) -->
-                                            <button data-booking-id="{{ $booking->id }}" 
-                                                    onclick="markAsPaid(this.dataset.bookingId)" 
-                                                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                <i class="fas fa-check mr-1"></i> Mark as Paid
-                                            </button>
                                         @elseif($booking->payment_status === 'paid')
                                             <!-- Check-in/out Time Buttons -->
                                             @if(!$booking->check_in_time)
@@ -317,30 +311,6 @@ function payBooking(bookingId, bookingType) {
     form.submit();
 }
 
-function markAsPaid(bookingId) {
-    if (confirm('Apakah Anda yakin ingin menandai booking ini sebagai sudah dibayar?')) {
-        fetch(`/payment/manual-update/${bookingId}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert(data.error || 'Terjadi kesalahan');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Terjadi kesalahan saat mengupdate status');
-        });
-    }
-}
 
 function setCheckInTime(bookingId) {
     currentBookingId = bookingId;

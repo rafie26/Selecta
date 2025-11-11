@@ -455,39 +455,6 @@ class PaymentController extends Controller
         return view('payment.success', compact('booking'));
     }
 
-    public function manualUpdateStatus(Request $request, $bookingId)
-    {
-        $booking = Booking::where('id', $bookingId)
-                          ->where('user_id', Auth::id())
-                          ->first();
-
-        if (!$booking) {
-            return response()->json(['error' => 'Booking tidak ditemukan'], 404);
-        }
-
-        if ($booking->payment_status !== 'pending') {
-            return response()->json(['error' => 'Booking sudah diproses'], 400);
-        }
-
-        $booking->update([
-            'payment_status' => 'paid',
-            'paid_at' => now(),
-            'payment_method' => 'manual_update'
-        ]);
-
-        // Generate QR code when payment is successful
-        if (!$booking->qr_code) {
-            $booking->qr_code = $booking->generateQRCode();
-            $booking->save();
-        }
-        
-        $this->generateBarcode($booking);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Status pembayaran berhasil diupdate!'
-        ]);
-    }
 
     private function generateBarcode($booking)
     {

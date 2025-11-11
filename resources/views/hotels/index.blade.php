@@ -71,11 +71,10 @@
 .hero-section {
     position: relative;
     height: 60vh;
-    background: linear-gradient(rgb(255, 255, 255), rgba(255, 255, 255, 0.3)), 
-                url('{{ asset("images/hotel4.png") }}');
+    background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
+                url('/images/hotel4.png');
     background-size: cover;
-    background-position: center 50%;
-    background-repeat: no-repeat;
+    background-position: center 85%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

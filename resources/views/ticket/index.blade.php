@@ -50,7 +50,7 @@
         .hero-section {
             position: relative;
             height: 60vh;
-            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), 
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
                         url('/images/herotiket2.png');
             background-size: cover;
             background-position: center 70%;
@@ -2744,5 +2744,6 @@
             });
         });
     </script>
+    <x-footer /> 
 </body>
 </html>
