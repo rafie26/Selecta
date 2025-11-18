@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Admin Dashboard') - Selecta</title>
+    <title>@yield('title', 'Petugas Loket Dashboard') - Selecta</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary: #1e40af; /* blue-800 */
-            --primary-600: #2563eb; /* blue-600 */
-            --primary-100: #dbeafe; /* blue-100 */
+            --primary: #059669; /* green-600 */
+            --primary-600: #10b981; /* green-500 */
+            --primary-100: #d1fae5; /* green-100 */
             --text: #0f172a; /* slate-900 */
             --muted: #475569; /* slate-600 */
             --border: #e5e7eb; /* gray-200 */
@@ -56,6 +56,7 @@
         .stat-card .card-title { color: var(--muted); }
         .stat-card h2 { color: var(--primary); font-weight: 800; }
     </style>
+    @yield('styles')
 </head>
 <body>
     <div class="container-fluid">
@@ -65,51 +66,52 @@
                 <div class="sidebar">
                     <div class="p-3 text-center border-bottom border-light border-opacity-25">
                         <h4 class="mb-0" style="color: var(--primary);">
-                            <i class="fas fa-mountain me-2"></i>
-                            Selecta Admin
+                            <i class="fas fa-ticket-alt me-2"></i>
+                            Petugas Loket
                         </h4>
                     </div>
                     <nav class="nav flex-column p-3">
-                        <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
+                        <a class="nav-link {{ request()->routeIs('petugas-loket.dashboard') ? 'active' : '' }}" href="{{ route('petugas-loket.dashboard') }}">
                             <i class="fas fa-tachometer-alt me-2"></i>
                             Dashboard
                         </a>
-                        <a class="nav-link {{ request()->routeIs('admin.users') ? 'active' : '' }}" href="{{ route('admin.users') }}">
-                            <i class="fas fa-users me-2"></i>
-                            Users
+                        <a class="nav-link {{ request()->routeIs('petugas-loket.packages') ? 'active' : '' }}" href="{{ route('petugas-loket.packages') }}">
+                            <i class="fas fa-box me-2"></i>
+                            Paket Tiket
                         </a>
-                        <a class="nav-link {{ request()->routeIs('admin.restaurants') ? 'active' : '' }}" href="{{ route('admin.restaurants') }}">
-                            <i class="fas fa-utensils me-2"></i>
-                            Restaurants
+                        <a class="nav-link {{ request()->routeIs('petugas-loket.ticket-bookings') ? 'active' : '' }}" href="{{ route('petugas-loket.ticket-bookings') }}">
+                            <i class="fas fa-ticket-alt me-2"></i>
+                            Booking Tiket
                         </a>
-                        <hr class="border-light border-opacity-25">
-                        <a class="nav-link" href="{{ url('/') }}" target="_blank">
-                            <i class="fas fa-external-link-alt me-2"></i>
-                            View Website
+                        <a class="nav-link {{ request()->routeIs('petugas-loket.qr-scanner') ? 'active' : '' }}" href="{{ route('petugas-loket.qr-scanner') }}">
+                            <i class="fas fa-qrcode me-2"></i>
+                            QR Scanner
                         </a>
-                        <form method="POST" action="{{ route('logout') }}" class="mt-3" onsubmit="handleAdminLogout(event)">
+                        <hr class="my-3">
+                        <a class="nav-link text-danger" href="{{ route('logout') }}" 
+                           onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                            <i class="fas fa-sign-out-alt me-2"></i>
+                            Logout
+                        </a>
+                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                             @csrf
-                            <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
-                                <i class="fas fa-sign-out-alt me-2"></i>
-                                Logout
-                            </button>
                         </form>
                     </nav>
                 </div>
             </div>
 
             <!-- Main Content -->
-            <div class="col-md-9 col-lg-10 px-0">
+            <div class="col-md-9 col-lg-10">
                 <div class="main-content">
-                    <!-- Header -->
-                    <div class="bg-white border-bottom px-4 py-3">
+                    <!-- Top Bar -->
+                    <div class="bg-white border-bottom border-light border-opacity-25 p-3 mb-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">@yield('page-title', 'Dashboard')</h5>
                             <div class="d-flex align-items-center">
-                                <span class="text-muted me-3">Selamat datang, {{ Auth::user()->name }}</span>
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    {{ Auth::user()->initials }}
-                                </div>
+                                <span class="me-3 text-muted">
+                                    <i class="fas fa-user-circle me-2"></i>
+                                    {{ Auth::user()->name }}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -118,6 +120,7 @@
                     <div class="p-4">
                         @if(session('success'))
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
                                 {{ session('success') }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
@@ -125,6 +128,7 @@
 
                         @if(session('error'))
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle me-2"></i>
                                 {{ session('error') }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
@@ -138,42 +142,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        // Handle admin logout with AJAX
-        function handleAdminLogout(event) {
-            event.preventDefault();
-            const form = event.target;
-            const formData = new FormData(form);
-            
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect to admin login page
-                    window.location.href = data.redirect_url || '/admin/login';
-                } else {
-                    console.error('Logout failed:', data.message);
-                    // Fallback to regular form submission
-                    form.submit();
-                }
-            })
-            .catch(error => {
-                console.error('Logout error:', error);
-                // Fallback to regular form submission
-                form.submit();
-            });
-        }
-    </script>
-    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     @stack('scripts')
 </body>
 </html>

@@ -42,6 +42,7 @@ class AdminController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
+            'role' => 'required|in:admin,petugas_loket,petugas_hotel',
         ]);
 
         if ($validator->fails()) {
@@ -62,7 +63,7 @@ class AdminController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'phone' => $request->phone,
-                'role' => 'admin', // Set role as admin
+                'role' => $request->role, // Set role from form
             ]);
 
             Log::info('New admin registered', [
@@ -76,20 +77,35 @@ class AdminController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
+            // Determine redirect URL based on role
+            $redirectUrl = '/';
+            $welcomeMessage = 'Registrasi berhasil! Selamat datang, ' . $user->name . '!';
+            
+            if ($user->role === User::ROLE_ADMIN) {
+                $redirectUrl = '/admin/dashboard';
+                $welcomeMessage = 'Registrasi admin berhasil! Selamat datang, ' . $user->name . '!';
+            } elseif ($user->role === User::ROLE_PETUGAS_LOKET) {
+                $redirectUrl = '/petugas-loket/dashboard';
+                $welcomeMessage = 'Registrasi petugas loket berhasil! Selamat datang, ' . $user->name . '!';
+            } elseif ($user->role === User::ROLE_PETUGAS_HOTEL) {
+                $redirectUrl = '/petugas-hotel/dashboard';
+                $welcomeMessage = 'Registrasi petugas hotel berhasil! Selamat datang, ' . $user->name . '!';
+            }
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Registrasi admin berhasil!',
+                    'message' => $welcomeMessage,
                     'user' => [
                         'name' => $user->name,
                         'email' => $user->email,
                         'role' => $user->role,
                     ],
-                    'redirect_url' => '/admin/dashboard'
+                    'redirect_url' => $redirectUrl
                 ]);
             }
 
-            return redirect('/admin/dashboard')->with('success', 'Registrasi admin berhasil! Selamat datang, ' . $user->name . '!');
+            return redirect($redirectUrl)->with('success', $welcomeMessage);
 
         } catch (\Exception $e) {
             Log::error('Admin registration failed', [
@@ -119,47 +135,63 @@ class AdminController extends Controller
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
             
-            // Check if user is admin
-            if ($user->role !== 'admin') {
+            // Check if user is staff (admin, petugas_loket, or petugas_hotel)
+            if (!in_array($user->role, ['admin', 'petugas_loket', 'petugas_hotel'])) {
                 Auth::logout();
                 
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Akses ditolak. Anda bukan administrator.',
+                        'message' => 'Akses ditolak. Anda bukan staff.',
                         'errors' => [
-                            'email' => ['Akses ditolak. Anda bukan administrator.']
+                            'email' => ['Akses ditolak. Hanya staff yang dapat login di sini.']
                         ]
                     ], 403);
                 }
                 
                 return back()->withErrors([
-                    'email' => 'Akses ditolak. Anda bukan administrator.',
+                    'email' => 'Akses ditolak. Hanya staff yang dapat login di sini.',
                 ])->withInput($request->except('password'));
             }
             
             $request->session()->regenerate();
             
-            Log::info('Admin logged in', [
+            // Determine redirect URL and message based on role
+            $redirectUrl = '/admin/dashboard';
+            $welcomeMessage = 'Selamat datang!';
+            
+            if ($user->role === User::ROLE_ADMIN) {
+                $redirectUrl = '/admin/dashboard';
+                $welcomeMessage = 'Selamat datang, Admin!';
+            } elseif ($user->role === User::ROLE_PETUGAS_LOKET) {
+                $redirectUrl = '/petugas-loket/dashboard';
+                $welcomeMessage = 'Selamat datang, Petugas Loket!';
+            } elseif ($user->role === User::ROLE_PETUGAS_HOTEL) {
+                $redirectUrl = '/petugas-hotel/dashboard';
+                $welcomeMessage = 'Selamat datang, Petugas Hotel!';
+            }
+            
+            Log::info('Staff logged in', [
                 'email' => $user->email,
                 'role' => $user->role,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'redirect_to' => $redirectUrl
             ]);
             
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Login admin berhasil!',
+                    'message' => $welcomeMessage,
                     'user' => [
                         'name' => $user->name,
                         'email' => $user->email,
                         'role' => $user->role,
                     ],
-                    'redirect_url' => '/admin/dashboard'
+                    'redirect_url' => $redirectUrl
                 ]);
             }
             
-            return redirect('/admin/dashboard')->with('success', 'Selamat datang, Admin!');
+            return redirect($redirectUrl)->with('success', $welcomeMessage);
         }
 
         if ($request->expectsJson() || $request->ajax()) {

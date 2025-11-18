@@ -13,363 +13,166 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             height: 100vh;
-            background: #0f0f23;
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            position: relative;
-            overflow: hidden;
         }
 
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
-            animation: floating 20s ease-in-out infinite;
-        }
-
-        @keyframes floating {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(30px, -30px) rotate(2deg); }
-            66% { transform: translate(-20px, 20px) rotate(-2deg); }
-        }
-
-        .admin-login-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            padding: 48px;
+        .login-container {
             width: 100%;
-            max-width: 440px;
-            box-shadow: 
-                0 32px 64px rgba(0, 0, 0, 0.12),
-                0 0 0 1px rgba(255, 255, 255, 0.05);
-            animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
+            max-width: 400px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 40px 32px;
+            background: #fafafa;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(40px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .admin-header {
+        .header {
             text-align: center;
             margin-bottom: 40px;
         }
 
-        .admin-logo::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 22px;
-            z-index: -1;
-            opacity: 0.7;
-            filter: blur(8px);
-        }
-
-        .admin-title {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: #1a1a2e;
+        .title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #111;
             margin-bottom: 8px;
-            letter-spacing: -0.02em;
         }
 
-        .admin-subtitle {
-            color: #64748b;
-            font-size: 1rem;
-            font-weight: 500;
+        .subtitle {
+            color: #666;
+            font-size: 0.9rem;
         }
 
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 12px;
-            color: #374151;
-            font-weight: 600;
-            font-size: 0.95rem;
-            letter-spacing: -0.01em;
-        }
-
-        .input-wrapper {
-            position: relative;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.9rem;
         }
 
         .form-group input {
             width: 100%;
-            padding: 16px 20px;
-            border: 2px solid #e5e7eb;
-            border-radius: 16px;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            background: #fafafa;
-            color: #1f2937;
-        }
-
-        .form-group input::placeholder {
-            color: #9ca3af;
-            font-weight: 400;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 
-                0 0 0 4px rgba(102, 126, 234, 0.08),
-                0 1px 3px rgba(0, 0, 0, 0.1);
-            transform: translateY(-1px);
+            border-color: #666;
         }
 
-        .form-group input:hover:not(:focus) {
-            border-color: #d1d5db;
-            background: white;
+        .form-group input::placeholder {
+            color: #999;
         }
 
         .error-message {
-            color: #ef4444;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-top: 8px;
-            margin-left: 4px;
-            opacity: 0;
-            animation: fadeInError 0.3s ease forwards;
-        }
-
-        .error-message:not(:empty) {
-            opacity: 1;
-        }
-
-        @keyframes fadeInError {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .admin-btn {
-            width: 100%;
-            padding: 18px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            margin-bottom: 24px;
-            position: relative;
-            letter-spacing: -0.01em;
-        }
-
-        .admin-btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .admin-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 
-                0 20px 40px rgba(102, 126, 234, 0.3),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-
-        .admin-btn:hover::before {
-            opacity: 1;
-        }
-
-        .admin-btn:active {
-            transform: translateY(0);
-        }
-
-        .admin-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .back-to-site {
-            text-align: center;
-            margin-top: 32px;
-        }
-
-        .back-to-site a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 12px;
-        }
-
-        .back-to-site a:hover {
-            color: #764ba2;
-            background: rgba(102, 126, 234, 0.05);
-            transform: translateX(-4px);
-        }
-
-        .security-notice {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(76, 99, 210, 0.08) 100%);
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            border-left: 4px solid #667eea;
-            padding: 20px;
-            margin-top: 24px;
-            border-radius: 12px;
-            position: relative;
+            color: #dc2626;
+            font-size: 0.85rem;
+            margin-top: 6px;
             display: none;
         }
 
-        .security-notice::before {
-            content: '🛡️';
-            position: absolute;
-            top: 16px;
-            left: 16px;
-            font-size: 1.2rem;
+        .error-message:not(:empty) {
+            display: block;
         }
 
-        .security-notice p {
-            color: #475569;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            margin: 0;
-            padding-left: 32px;
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: #111;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
             font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 20px;
         }
 
-        .security-notice strong {
-            color: #334155;
+        .submit-btn:hover:not(:disabled) {
+            background: #333;
         }
 
-        /* Loading state */
-        .admin-btn.loading {
-            position: relative;
-            color: transparent;
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
-        .admin-btn.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            top: 50%;
-            left: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .back-link a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
         }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 16px;
-            }
-            
-            .admin-login-container {
-                padding: 32px 24px;
-                max-width: 100%;
-                border-radius: 20px;
-            }
-            
-            .admin-title {
-                font-size: 1.8rem;
-            }
+        .back-link a:hover {
+            color: #111;
+        }
 
-            .admin-logo {
-                width: 64px;
-                height: 64px;
-                font-size: 24px;
-            }
+        .info-box {
+            background: #f9f9f9;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 20px;
+            display: none;
+        }
 
-            .form-group input {
-                padding: 14px 16px;
-            }
-
-            .admin-btn {
-                padding: 16px 20px;
-            }
+        .info-box p {
+            color: #555;
+            font-size: 0.85rem;
+            line-height: 1.5;
         }
 
         @media (max-width: 480px) {
-            .admin-login-container {
-                padding: 24px 20px;
+            .title {
+                font-size: 1.5rem;
             }
 
-            .admin-title {
-                font-size: 1.6rem;
+            .form-group input,
+            .submit-btn {
+                padding: 12px;
             }
-        }
-
-        /* Enhanced focus styles for accessibility */
-        .admin-btn:focus-visible {
-            outline: 2px solid #667eea;
-            outline-offset: 2px;
-        }
-
-        .form-group input:focus-visible {
-            outline: 2px solid #667eea;
-            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
-    <div class="admin-login-container">
-        <div class="admin-header">
-            
-            <h1 class="admin-title">Admin Panel</h1>
-            <p class="admin-subtitle">Masuk ke Dashboard Administrator</p>
+    <div class="login-container">
+        <div class="header">
+            <h1 class="title">Staff Portal</h1>
+            <p class="subtitle">Login untuk Admin & Petugas</p>
         </div>
 
-        <form method="POST" action="{{ route('admin.login') }}" onsubmit="handleAdminLogin(event)">
+        <form method="POST" action="{{ route('admin.login') }}" onsubmit="handleLogin(event)">
             @csrf
             
             <div class="form-group">
                 <label for="email">Email</label>
-                <div class="input-wrapper">
-                    <input type="email" 
-                           id="email" 
-                           name="email" 
-                           placeholder="Masukan Email" 
-                           value="{{ old('email') }}"
-                           required>
-                </div>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       placeholder="Masukan Email" 
+                       value="{{ old('email') }}"
+                       required>
                 <div class="error-message" id="emailError">
                     @error('email')
                         {{ $message }}
@@ -379,13 +182,11 @@
 
             <div class="form-group">
                 <label for="password">Kata Sandi</label>
-                <div class="input-wrapper">
-                    <input type="password" 
-                           id="password" 
-                           name="password" 
-                           placeholder="Masukkan kata sandi admin" 
-                           required>
-                </div>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       placeholder="Masukkan kata sandi" 
+                       required>
                 <div class="error-message" id="passwordError">
                     @error('password')
                         {{ $message }}
@@ -393,22 +194,22 @@
                 </div>
             </div>
 
-            <button type="submit" class="admin-btn" id="submitBtn">
+            <button type="submit" class="submit-btn" id="submitBtn">
                 Masuk ke Dashboard
             </button>
         </form>
 
-        <div class="security-notice">
-            <p><strong>Keamanan:</strong> Halaman ini khusus untuk administrator. Semua aktivitas login akan dicatat untuk keamanan sistem.</p>
+        <div class="info-box">
+            <p>Halaman ini untuk staff (Admin, Petugas Loket, Petugas Hotel). Setelah login, Anda akan diarahkan ke dashboard sesuai role Anda.</p>
         </div>
 
-        <div class="back-to-site">
+        <div class="back-link">
             <a href="{{ route('home') }}">← Kembali ke Situs Utama</a>
         </div>
     </div>
 
     <script>
-        function handleAdminLogin(event) {
+        function handleLogin(event) {
             event.preventDefault();
             const form = event.target;
             const submitBtn = document.getElementById('submitBtn');
@@ -416,9 +217,7 @@
             
             submitBtn.textContent = 'Memverifikasi...';
             submitBtn.disabled = true;
-            submitBtn.classList.add('loading');
             
-            // Clear previous errors
             clearErrors();
             
             fetch(form.action, {
@@ -460,7 +259,6 @@
             .finally(() => {
                 submitBtn.textContent = 'Masuk ke Dashboard';
                 submitBtn.disabled = false;
-                submitBtn.classList.remove('loading');
             });
         }
 
@@ -471,20 +269,10 @@
             });
         }
 
-        // Enhanced input interactions
         document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('input');
             
             inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.parentElement.style.transform = 'scale(1.01)';
-                    this.parentElement.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
-                });
-                
-                input.addEventListener('blur', function() {
-                    this.parentElement.style.transform = 'scale(1)';
-                });
-
                 input.addEventListener('input', function() {
                     const errorElement = this.closest('.form-group').querySelector('.error-message');
                     if (errorElement) {
@@ -492,9 +280,6 @@
                     }
                 });
             });
-
-            // Add smooth scroll behavior
-            document.documentElement.style.scrollBehavior = 'smooth';
         });
     </script>
 </body>

@@ -15,6 +15,8 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BookingHistoryController;
+use App\Http\Controllers\PetugasLoketController;
+use App\Http\Controllers\PetugasHotelController;
 
 /*
 |--------------------------------------------------------------------------
@@ -175,6 +177,19 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::get('/packages', [AdminController::class, 'packages'])->name('packages');
     Route::get('/restaurants', [AdminController::class, 'restaurants'])->name('restaurants');
 
+    // Restaurant CRUD routes
+    Route::get('/restaurants/{id}', [AdminController::class, 'getRestaurant'])->name('restaurants.get');
+    Route::post('/restaurants', [AdminController::class, 'storeRestaurant'])->name('restaurants.store');
+    Route::put('/restaurants/{id}', [AdminController::class, 'updateRestaurant'])->name('restaurants.update');
+    Route::delete('/restaurants/{id}', [AdminController::class, 'deleteRestaurant'])->name('restaurants.delete');
+
+    // Menu Item CRUD routes
+    Route::get('/menu-items/{id}', [AdminController::class, 'getMenuItem'])->name('menu-items.get');
+    Route::post('/menu-items', [AdminController::class, 'storeMenuItem'])->name('menu-items.store');
+    Route::put('/menu-items/{id}', [AdminController::class, 'updateMenuItem'])->name('menu-items.update');
+    Route::delete('/menu-items/{id}', [AdminController::class, 'deleteMenuItem'])->name('menu-items.delete');
+    Route::post('/menu-items/{id}/toggle-status', [AdminController::class, 'toggleMenuItemStatus'])->name('menu-items.toggle-status');
+
     // Keep existing Package management routes (used for Tickets CRUD under the hood)
     Route::get('/packages', [AdminController::class, 'packages'])->name('packages');
     Route::get('/packages/create', [AdminController::class, 'createPackage'])->name('packages.create');
@@ -192,6 +207,46 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::post('/hotel-photos/{id}/toggle-featured', [AdminController::class, 'togglePhotoFeatured'])->name('hotel-photos.toggle-featured');
     Route::post('/hotel-photos/{id}/toggle-status', [AdminController::class, 'togglePhotoStatus'])->name('hotel-photos.toggle-status');
     Route::post('/hotel-photos/update-order', [AdminController::class, 'updatePhotosOrder'])->name('hotel-photos.update-order');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Petugas Loket Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('petugas-loket')->middleware(['auth', 'role:petugas_loket'])->name('petugas-loket.')->group(function () {
+    Route::get('/dashboard', [PetugasLoketController::class, 'dashboard'])->name('dashboard');
+    Route::get('/packages', [PetugasLoketController::class, 'packages'])->name('packages');
+    Route::post('/packages', [PetugasLoketController::class, 'storePackage'])->name('packages.store');
+    Route::put('/packages/{id}', [PetugasLoketController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{id}', [PetugasLoketController::class, 'deletePackage'])->name('packages.delete');
+    Route::post('/packages/{id}/toggle-status', [PetugasLoketController::class, 'togglePackageStatus'])->name('packages.toggle-status');
+    Route::get('/ticket-bookings', [PetugasLoketController::class, 'ticketBookings'])->name('ticket-bookings');
+    Route::get('/qr-scanner', [PetugasLoketController::class, 'qrScanner'])->name('qr-scanner');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Petugas Hotel Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('petugas-hotel')->middleware(['auth', 'role:petugas_hotel'])->name('petugas-hotel.')->group(function () {
+    Route::get('/dashboard', [PetugasHotelController::class, 'dashboard'])->name('dashboard');
+    Route::get('/hotels', [PetugasHotelController::class, 'hotels'])->name('hotels');
+    Route::post('/hotels', [PetugasHotelController::class, 'storeRoomType'])->name('hotels.store');
+    Route::put('/hotels/{id}', [PetugasHotelController::class, 'updateRoomType'])->name('hotels.update');
+    Route::delete('/hotels/{id}', [PetugasHotelController::class, 'deleteRoomType'])->name('hotels.delete');
+    Route::post('/hotels/{id}/adjust-rooms', [PetugasHotelController::class, 'adjustAvailableRooms'])->name('hotels.adjust-rooms');
+    Route::get('/hotel-photos', [PetugasHotelController::class, 'getHotelPhotos'])->name('hotel-photos');
+    Route::post('/hotel-photos', [PetugasHotelController::class, 'storeHotelPhoto'])->name('hotel-photos.store');
+    Route::put('/hotel-photos/{id}', [PetugasHotelController::class, 'updateHotelPhoto'])->name('hotel-photos.update');
+    Route::delete('/hotel-photos/{id}', [PetugasHotelController::class, 'deleteHotelPhoto'])->name('hotel-photos.delete');
+    Route::post('/hotel-photos/{id}/toggle-featured', [PetugasHotelController::class, 'togglePhotoFeatured'])->name('hotel-photos.toggle-featured');
+    Route::post('/hotel-photos/{id}/toggle-status', [PetugasHotelController::class, 'togglePhotoStatus'])->name('hotel-photos.toggle-status');
+    Route::get('/hotel-bookings', [PetugasHotelController::class, 'hotelBookings'])->name('hotel-bookings');
+    Route::get('/qr-scanner', [PetugasHotelController::class, 'qrScanner'])->name('qr-scanner');
 });
 
 /*

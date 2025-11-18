@@ -187,6 +187,31 @@
             background: white;
         }
 
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            background: #f8fafc;
+            color: #1e293b;
+            cursor: pointer;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group select:hover:not(:focus) {
+            border-color: #cbd5e1;
+            background: white;
+        }
+
         .error-message {
             color: #ef4444;
             font-size: 0.875rem;
@@ -384,8 +409,8 @@
         <!-- Form Side -->
         <div class="register-form-container">
             <div class="form-header">
-                <h2 class="form-title">Daftar Admin</h2>
-                <p class="form-subtitle">Buat akun administrator baru</p>
+                <h2 class="form-title">Daftar Staff</h2>
+                <p class="form-subtitle">Buat akun staff baru (Admin / Petugas)</p>
             </div>
 
             <form method="POST" action="{{ route('admin.register') }}" onsubmit="handleAdminRegister(event)">
@@ -442,6 +467,23 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="role">Role / Jabatan</label>
+                    <div class="input-wrapper">
+                        <select id="role" name="role" required>
+                            <option value="">-- Pilih Role --</option>
+                            <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>👑 Admin - Akses Penuh Sistem</option>
+                            <option value="petugas_loket" {{ old('role') == 'petugas_loket' ? 'selected' : '' }}>🎫 Petugas Loket - Kelola Tiket</option>
+                            <option value="petugas_hotel" {{ old('role') == 'petugas_hotel' ? 'selected' : '' }}>🏨 Petugas Hotel - Kelola Hotel</option>
+                        </select>
+                    </div>
+                    <div class="error-message" id="roleError">
+                        @error('role')
+                            {{ $message }}
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label for="password">Kata Sandi</label>
                     <div class="input-wrapper">
                         <input type="password" 
@@ -474,12 +516,16 @@
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
-                    Daftar sebagai Admin
+                    Daftar Akun
                 </button>
             </form>
 
             <div class="info-card">
-                <p><strong>Keamanan:</strong> Akun admin memiliki akses penuh ke sistem. Pastikan menggunakan kata sandi yang kuat dan simpan kredensial dengan aman.</p>
+                <p style="margin-bottom: 12px;"><strong>Perbedaan Role:</strong></p>
+                <p style="margin-bottom: 8px; font-size: 0.8rem;">👑 <strong>Admin:</strong> Akses penuh ke sistem (Users, Restaurants, Hotel Photos)</p>
+                <p style="margin-bottom: 8px; font-size: 0.8rem;">🎫 <strong>Petugas Loket:</strong> Kelola paket tiket dan booking tiket</p>
+                <p style="margin-bottom: 8px; font-size: 0.8rem;">🏨 <strong>Petugas Hotel:</strong> Kelola tipe kamar dan booking hotel</p>
+                <p style="margin-top: 12px; font-size: 0.8rem;"><strong>Keamanan:</strong> Gunakan kata sandi yang kuat dan simpan kredensial dengan aman.</p>
             </div>
 
             <div class="divider">
@@ -547,7 +593,7 @@
                 }
             })
             .finally(() => {
-                submitBtn.textContent = 'Daftar sebagai Admin';
+                submitBtn.textContent = 'Daftar Akun';
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('loading');
             });

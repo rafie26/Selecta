@@ -40,26 +40,37 @@ class AuthController extends Controller
                 'user_id' => $user->id
             ]);
             
+            // Determine redirect URL based on role
+            $redirectUrl = '/';
+            $welcomeMessage = 'Login berhasil!';
+            
+            if ($user->role === User::ROLE_ADMIN) {
+                $redirectUrl = '/admin/dashboard';
+                $welcomeMessage = 'Selamat datang, Admin!';
+            } elseif ($user->role === User::ROLE_PETUGAS_LOKET) {
+                $redirectUrl = '/petugas-loket/dashboard';
+                $welcomeMessage = 'Selamat datang, Petugas Loket!';
+            } elseif ($user->role === User::ROLE_PETUGAS_HOTEL) {
+                $redirectUrl = '/petugas-hotel/dashboard';
+                $welcomeMessage = 'Selamat datang, Petugas Hotel!';
+            }
+            
             // Check if it's an AJAX request
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Login berhasil!',
+                    'message' => $welcomeMessage,
                     'user' => [
                         'name' => $user->name,
                         'email' => $user->email,
                         'role' => $user->role ?? 'user',
                     ],
-                    'redirect_url' => ($user->role === 'admin') ? '/admin/dashboard' : '/'
+                    'redirect_url' => $redirectUrl
                 ]);
             }
             
             // Regular form submission - redirect based on role
-            if ($user->role === 'admin') {
-                return redirect('/admin/dashboard')->with('success', 'Selamat datang, Admin!');
-            }
-            
-            return redirect('/')->with('success', 'Login berhasil!');
+            return redirect($redirectUrl)->with('success', $welcomeMessage);
         }
 
         // Check if it's an AJAX request
@@ -118,28 +129,35 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role === 'admin';
+        $userRole = $user ? $user->role : null;
         
         Auth::logout();
         
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        // Determine redirect URL based on previous role
+        $redirectUrl = '/';
+        $message = 'Logout berhasil!';
+        
+        if ($userRole === User::ROLE_ADMIN) {
+            $redirectUrl = '/admin/login';
+            $message = 'Logout berhasil! Silakan login kembali untuk mengakses admin panel.';
+        } elseif ($userRole === User::ROLE_PETUGAS_LOKET || $userRole === User::ROLE_PETUGAS_HOTEL) {
+            $redirectUrl = '/login';
+            $message = 'Logout berhasil! Silakan login kembali.';
+        }
+
         // Check if it's an AJAX request
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Logout berhasil!',
-                'redirect_url' => $isAdmin ? '/admin/login' : '/'
+                'message' => $message,
+                'redirect_url' => $redirectUrl
             ]);
         }
         
         // Redirect based on user role
-        if ($isAdmin) {
-            return redirect('/admin/login')->with('success', 'Logout berhasil! Silakan login kembali untuk mengakses admin panel.');
-        }
-        
-        // Regular user - redirect to home page
-        return redirect('/')->with('success', 'Logout berhasil!');
+        return redirect($redirectUrl)->with('success', $message);
     }
 }

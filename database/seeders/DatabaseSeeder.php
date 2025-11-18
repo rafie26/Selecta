@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             PackageSeeder::class,
             RoomTypeSeeder::class,
+            RestaurantSeeder::class,
         ]);
     }
 }
