@@ -392,95 +392,43 @@
         <p class="section-subtitle">Tiga restoran pilihan dengan cita rasa dan suasana yang berbeda</p>
 
         <div class="restaurants-grid">
-            <!-- Restoran Bahagia -->
-            <div class="restaurant-card" onclick="openMenu('bahagia')">
-                <div class="restaurant-image" style="background-image: url('/images/restobahagia.jpeg')">
-                </div>
-                <div class="restaurant-content">
-                    <h3 class="restaurant-name">Restoran Bahagia</h3>
-                    <p class="restaurant-description">
-                        Restoran yang menyajikan makanan khas Jawa dengan suasana akrab dan tradisional. Menu menampilkan hidangan otentik seperti Soto Ayam Jawa, Nasi Rawon, Tempe Penyet dengan rasa kaya dan rempah-rempah khas Jawa.
-                    </p>
-                    <div class="restaurant-features">
-                        <span class="feature-tag">
-                            <i class="fas fa-utensils icon"></i>
-                            Masakan Jawa
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-users icon"></i>
-                            Family Friendly
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-leaf icon"></i>
-                            Halal
-                        </span>
+            @php
+                $featureIcons = ['fa-utensils', 'fa-users', 'fa-leaf', 'fa-globe', 'fa-heart', 'fa-clock', 'fa-fire', 'fa-tree', 'fa-smile'];
+            @endphp
+            @forelse($restaurants as $restaurant)
+                @php
+                    $imageUrl = $restaurant->image_url ?? '/images/heroresto.png';
+                    $features = is_array($restaurant->features) ? $restaurant->features : [];
+                @endphp
+                <div class="restaurant-card" onclick="openMenu('{{ $restaurant->slug }}')">
+                    <div class="restaurant-image" style="background-image: url('{{ $imageUrl }}')">
                     </div>
-                    <button class="view-menu-btn">
-                        <i class="fas fa-book icon"></i>
-                        Lihat Menu
-                    </button>
-                </div>
-            </div>
-
-            <!-- Restoran Asri -->
-            <div class="restaurant-card" onclick="openMenu('asri')">
-                <div class="restaurant-image" style="background-image: url('/images/restoasri.jpeg')">
-                </div>
-                <div class="restaurant-content">
-                    <h3 class="restaurant-name">Restoran Asri</h3>
-                    <p class="restaurant-description">
-                        Restoran dengan vibes seperti restoran di China dengan suasana hangat dan nyaman. Menu mencakup hidangan ikonik seperti Fu Yung Hay, Ayam Filet Krispi, Nasi Goreng Hong Kong, Tamie Capcay dengan bahan segar dan rempah khas.
-                    </p>
-                    <div class="restaurant-features">
-                        <span class="feature-tag">
-                            <i class="fas fa-globe icon"></i>
-                            Chinese Cuisine
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-heart icon"></i>
-                            Suasana Hangat
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-clock icon"></i>
-                            Pelayanan Cepat
-                        </span>
+                    <div class="restaurant-content">
+                        <h3 class="restaurant-name">{{ $restaurant->name }}</h3>
+                        @if($restaurant->description)
+                            <p class="restaurant-description">
+                                {{ $restaurant->description }}
+                            </p>
+                        @endif
+                        @if(!empty($features))
+                            <div class="restaurant-features">
+                                @foreach($features as $index => $feature)
+                                    <span class="feature-tag">
+                                        <i class="fas {{ $featureIcons[$index % count($featureIcons)] }} icon"></i>
+                                        {{ $feature }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
+                        <button class="view-menu-btn">
+                            <i class="fas fa-book icon"></i>
+                            Lihat Menu
+                        </button>
                     </div>
-                    <button class="view-menu-btn">
-                        <i class="fas fa-book icon"></i>
-                        Lihat Menu
-                    </button>
                 </div>
-            </div>
-
-            <!-- Restoran Cantik -->
-            <div class="restaurant-card" onclick="openMenu('cantik')">
-                <div class="restaurant-image" style="background-image: url('/images/restocantik.jpeg')">
-                </div>
-                <div class="restaurant-content">
-                    <h3 class="restaurant-name">Restoran Cantik</h3>
-                    <p class="restaurant-description">
-                        Restoran ini menyajikan makanan khas bakaran dengan suasana santai dan terbuka. Menu berfokus pada hidangan panggang seperti Sate dan Ayam Bakar dengan aroma asap dan bumbu marinasi yang menggugah selera.
-                    </p>
-                    <div class="restaurant-features">
-                        <span class="feature-tag">
-                            <i class="fas fa-fire icon"></i>
-                            Makanan Bakar
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-tree icon"></i>
-                            Outdoor Dining
-                        </span>
-                        <span class="feature-tag">
-                            <i class="fas fa-smile icon"></i>
-                            Suasana Santai
-                        </span>
-                    </div>
-                    <button class="view-menu-btn">
-                        <i class="fas fa-book icon"></i>
-                        Lihat Menu
-                    </button>
-                </div>
-            </div>
+            @empty
+                <p class="section-subtitle" style="grid-column: 1 / -1;">Belum ada restoran yang tersedia.</p>
+            @endforelse
         </div>
     </div>
 
@@ -498,162 +446,34 @@
         </div>
     </div>
 
+    <div id="restaurant-menu-data" data-config="{{ base64_encode(json_encode($menuData ?? [])) }}" style="display: none;"></div>
+
     <script>
-        // Menu data for each restaurant
-        const menuData = {
-            bahagia: {
-                name: "Restoran Bahagia",
-                items: [
-                    {
-                        name: "Sop Buntut Istimewa",
-                        description: "Sup buntut dengan kuah bening kaya rempah, dilengkapi wortel dan kentang segar yang empuk",
-                        price: "Rp 45.000",
-                        category: "Makanan",
-                        image: "/images/sopbuntut.jpeg"
-                    },
-                    {
-                        name: "Rawon Spesial",
-                        description: "Rawon hitam khas Jawa Timur dengan daging sapi empuk, keluak khas, dan sambal terasi pedas",
-                        price: "Rp 50.000",
-                        category: "Makanan",
-                        image: "/images/rawon.jpeg"
-                    },
-                    {
-                        name: "Soto Ayam Istimewa",
-                        description: "Soto ayam dengan kuah bening gurih, ayam kampung, tauge, telur rebus, dan kerupuk renyah",
-                        price: "Rp 35.000",
-                        category: "Makanan",
-                        image: "/images/soto.jpeg"
-                    },
-                    {
-                        name: "Ginseng Coffee",
-                        description: "Kopi nikmat dengan ekstrak ginseng premium, memberikan energi dan kesegaran alami",
-                        price: "Rp 35.000",
-                        category: "Minuman",
-                        image: "/images/ginseng.jpeg"
-                    },
-                    {
-                        name: "Wedang Jahe",
-                        description: "Minuman tradisional jahe hangat dengan gula aren dan rempah pilihan, cocok untuk cuaca dingin",
-                        price: "Rp 35.000",
-                        category: "Minuman",
-                        image: "/images/wedang.jpeg"
-                    },
-                    {
-                        name: "Kopi Tubruk",
-                        description: "Kopi tradisional dengan ampas, diseduh dengan gula jawa, memberikan cita rasa khas Indonesia",
-                        price: "Rp 35.000",
-                        category: "Minuman",
-                        image: "/images/kopitubruk.jpeg"
-                    }
-                ]
-            },
-            asri: {
-                name: "Restoran Asri",
-                items: [
-                    {
-                        name: "Cwimie Ayam Spesial",
-                        description: "Mi kuah dengan potongan ayam kampung empuk, sayuran segar, dan kuah kaldu yang gurih",
-                        price: "Rp 55.000",
-                        category: "Makanan",
-                        image: "/images/cwimie.jpeg"
-                    },
-                    {
-                        name: "Nasi Goreng Hongkong",
-                        description: "Nasi goreng ala Hongkong dengan telur mata sapi, acar timun, dan bumbu kecap manis khas",
-                        price: "Rp 48.000",
-                        category: "Makanan",
-                        image: "/images/nasgor.jpeg"
-                    },
-                    {
-                        name: "Mie Ayam",
-                        description: "Mi kuah dengan bakso sapi pilihan, pangsit goreng renyah, dan sayuran hijau segar",
-                        price: "Rp 32.000",
-                        category: "Makanan",
-                        image: "/images/mieayam.jpeg"
-                    },
-                    {
-                        name: "Cappucino",
-                        description: "Kopi cappucino dengan foam susu yang lembut dan aroma kopi yang kuat dan nikmat",
-                        price: "Rp 32.000",
-                        category: "Minuman",
-                        image: "/images/cappucino.jpeg"
-                    },
-                    {
-                        name: "Jus Sirsak",
-                        description: "Jus sirsak segar dengan daging buah asli, manis alami dan menyegarkan",
-                        price: "Rp 32.000",
-                        category: "Minuman",
-                        image: "/images/jussirsak.jpeg"
-                    },
-                    {
-                        name: "Soda Gembira",
-                        description: "Minuman bersoda segar dengan sirup buah dan susu kental manis, cocok untuk anak-anak",
-                        price: "Rp 32.000",
-                        category: "Minuman",
-                        image: "/images/soda.jpeg"
-                    }
-                ]
-            },
-            cantik: {
-                name: "Restoran Cantik",
-                items: [
-                    {
-                        name: "Gurami Asam Manis",
-                        description: "Gurami goreng segar dengan saus asam manis, nanas, dan sayuran renyah yang menggugah selera",
-                        price: "Rp 185.000",
-                        category: "Makanan",
-                        image: "/images/guramiasam.jpeg"
-                    },
-                    {
-                        name: "Sate Kelinci Spesial",
-                        description: "Sate kelinci bakar dengan bumbu kacang khas dan lalapan segar, cita rasa unik dan lezat",
-                        price: "Rp 220.000",
-                        category: "Makanan",
-                        image: "/images/satekelinci.jpeg"
-                    },
-                    {
-                        name: "Gurami Goreng",
-                        description: "Gurami goreng crispy dengan sambal terasi pedas dan lalapan mentimun yang segar",
-                        price: "Rp 165.000",
-                        category: "Makanan",
-                        image: "/images/guramigoreng.jpeg"
-                    },
-                    {
-                        name: "Es Jeruk",
-                        description: "Minuman jeruk segar dengan es batu dan gula sesuai selera, menyegarkan di cuaca panas",
-                        price: "Rp 165.000",
-                        category: "Minuman",
-                        image: "/images/jeruk.jpeg"
-                    },
-                    {
-                        name: "Jus Strawberry",
-                        description: "Jus strawberry segar dengan buah asli dan susu, manis dan creamy yang menyegarkan",
-                        price: "Rp 165.000",
-                        category: "Minuman",
-                        image: "/images/jusstrawberry.jpeg"
-                    },
-                    {
-                        name: "Es Teh",
-                        description: "Es teh manis tradisional dengan teh pilihan dan gula yang pas, cocok menemani makanan",
-                        price: "Rp 165.000",
-                        category: "Minuman",
-                        image: "/images/esteh.jpeg"
-                    }
-                ]
+        const menuConfigElement = document.getElementById('restaurant-menu-data');
+        let menuData = {};
+        if (menuConfigElement && menuConfigElement.dataset && menuConfigElement.dataset.config) {
+            try {
+                menuData = JSON.parse(atob(menuConfigElement.dataset.config));
+            } catch (e) {
+                menuData = {};
             }
-        };
+        }
 
         let currentRestaurant = '';
 
         // Modal functionality
         function openMenu(restaurant) {
+            if (!menuData[restaurant] || !Array.isArray(menuData[restaurant].items) || menuData[restaurant].items.length === 0) {
+                return;
+            }
+
             currentRestaurant = restaurant;
             
             const modal = document.getElementById('menuModal');
             const modalTitle = document.getElementById('modalTitle');
-            
-            modalTitle.textContent = `Menu ${menuData[restaurant].name}`;
+
+            const data = menuData[restaurant];
+            modalTitle.textContent = `Menu ${data.name || 'Restoran'}`;
             
             displayMenuItems();
             modal.classList.add('active');
@@ -672,8 +492,14 @@
 
         function displayMenuItems() {
             const menuContainer = document.getElementById('menuItems');
-            const items = menuData[currentRestaurant].items;
-            
+            const data = menuData[currentRestaurant];
+            const items = data && Array.isArray(data.items) ? data.items : [];
+
+            if (!items.length) {
+                menuContainer.innerHTML = '<p class="section-subtitle">Belum ada menu untuk restoran ini.</p>';
+                return;
+            }
+
             menuContainer.innerHTML = items.map(item => `
                 <div class="menu-item">
                     <div class="menu-item-image" style="background-image: url('${item.image}')"></div>
@@ -689,6 +515,8 @@
 
         function getCategoryName(category) {
             const categories = {
+                'makanan': 'Makanan',
+                'minuman': 'Minuman',
                 'appetizer': 'Appetizer',
                 'main': 'Main Course',
                 'dessert': 'Dessert',

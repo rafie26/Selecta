@@ -9,6 +9,8 @@ use App\Models\Package;
 use App\Models\RoomBooking;
 use App\Models\RoomType;
 use App\Models\HotelPhoto;
+use App\Models\Restaurant;
+use App\Models\MenuItem;
 use App\Services\MidtransService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -724,8 +727,455 @@ class AdminController extends Controller
 
     public function restaurants()
     {
-        // Placeholder view for Restaurants CRUD (3 restaurants)
-        return view('admin.restaurants');
+        $restaurants = Restaurant::with('menuItems')->orderBy('name')->get();
+        return view('admin.restaurants', compact('restaurants'));
+     }
+
+    public function getRestaurant($id)
+    {
+        try {
+            $restaurant = Restaurant::with('menuItems')->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $restaurant,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Restoran tidak ditemukan.',
+            ], 404);
+        }
+    }
+
+    public function storeRestaurant(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'cuisine_type' => 'nullable|string|max:255',
+            'operating_hours' => 'nullable|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'features' => 'nullable|string|max:500',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $slugBase = Str::slug($request->name);
+            $slug = $slugBase;
+            $counter = 1;
+
+            while (Restaurant::where('slug', $slug)->exists()) {
+                $slug = $slugBase . '-' . $counter;
+                $counter++;
+            }
+
+            $features = null;
+            if ($request->filled('features')) {
+                $featuresArray = array_filter(array_map('trim', explode(',', $request->features)));
+                if (!empty($featuresArray)) {
+                    $features = $featuresArray;
+                }
+            }
+
+            $data = [
+                'name' => $request->name,
+                'slug' => $slug,
+                'description' => $request->description,
+                'cuisine_type' => $request->cuisine_type,
+                'features' => $features,
+                'operating_hours' => $request->operating_hours,
+                'location' => $request->location,
+                'is_active' => true,
+            ];
+
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('restaurants', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $restaurant = Restaurant::create($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Restoran berhasil ditambahkan.',
+                'data' => $restaurant,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to store restaurant', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menambahkan restoran.',
+            ], 500);
+        }
+    }
+
+    public function updateRestaurant(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'cuisine_type' => 'nullable|string|max:255',
+            'operating_hours' => 'nullable|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'features' => 'nullable|string|max:500',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $restaurant = Restaurant::findOrFail($id);
+
+            DB::beginTransaction();
+
+            $features = null;
+            if ($request->filled('features')) {
+                $featuresArray = array_filter(array_map('trim', explode(',', $request->features)));
+                if (!empty($featuresArray)) {
+                    $features = $featuresArray;
+                }
+            }
+
+            $data = [
+                'name' => $request->name,
+                'description' => $request->description,
+                'cuisine_type' => $request->cuisine_type,
+                'features' => $features,
+                'operating_hours' => $request->operating_hours,
+                'location' => $request->location,
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($restaurant->image_path && Storage::disk('public')->exists($restaurant->image_path)) {
+                    Storage::disk('public')->delete($restaurant->image_path);
+                }
+
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('restaurants', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $restaurant->update($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Restoran berhasil diperbarui.',
+                'data' => $restaurant->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to update restaurant', [
+                'restaurant_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui restoran.',
+            ], 500);
+        }
+    }
+
+    public function deleteRestaurant($id)
+    {
+        try {
+            $restaurant = Restaurant::with('menuItems')->findOrFail($id);
+
+            DB::beginTransaction();
+
+            if ($restaurant->image_path && Storage::disk('public')->exists($restaurant->image_path)) {
+                Storage::disk('public')->delete($restaurant->image_path);
+            }
+
+            foreach ($restaurant->menuItems as $item) {
+                if ($item->image_path && Storage::disk('public')->exists($item->image_path)) {
+                    Storage::disk('public')->delete($item->image_path);
+                }
+            }
+
+            $restaurantName = $restaurant->name;
+            $restaurant->delete();
+
+            DB::commit();
+
+            Log::info('Restaurant deleted', [
+                'restaurant_name' => $restaurantName,
+                'deleted_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Restoran berhasil dihapus.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to delete restaurant', [
+                'restaurant_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus restoran.',
+            ], 500);
+        }
+    }
+
+    public function getMenuItem($id)
+    {
+        try {
+            $menuItem = MenuItem::with('restaurant')->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $menuItem,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Menu tidak ditemukan.',
+            ], 404);
+        }
+    }
+
+    public function storeMenuItem(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'restaurant_id' => 'required|exists:restaurants,id',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category' => 'required|in:makanan,minuman',
+            'price' => 'required|numeric|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $sortOrder = MenuItem::where('restaurant_id', $request->restaurant_id)->max('sort_order');
+            if ($sortOrder === null) {
+                $sortOrder = 0;
+            } else {
+                $sortOrder++;
+            }
+
+            $data = [
+                'restaurant_id' => $request->restaurant_id,
+                'name' => $request->name,
+                'description' => $request->description,
+                'category' => $request->category,
+                'price' => $request->price,
+                'is_active' => true,
+                'sort_order' => $sortOrder,
+            ];
+
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('menu_items', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $menuItem = MenuItem::create($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu berhasil ditambahkan.',
+                'data' => $menuItem,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to store menu item', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menambahkan menu.',
+            ], 500);
+        }
+    }
+
+    public function updateMenuItem(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'restaurant_id' => 'required|exists:restaurants,id',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category' => 'required|in:makanan,minuman',
+            'price' => 'required|numeric|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $menuItem = MenuItem::findOrFail($id);
+
+            DB::beginTransaction();
+
+            $data = [
+                'restaurant_id' => $request->restaurant_id,
+                'name' => $request->name,
+                'description' => $request->description,
+                'category' => $request->category,
+                'price' => $request->price,
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($menuItem->image_path && Storage::disk('public')->exists($menuItem->image_path)) {
+                    Storage::disk('public')->delete($menuItem->image_path);
+                }
+
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('menu_items', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $menuItem->update($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu berhasil diperbarui.',
+                'data' => $menuItem->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to update menu item', [
+                'menu_item_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui menu.',
+            ], 500);
+        }
+    }
+
+    public function deleteMenuItem($id)
+    {
+        try {
+            $menuItem = MenuItem::findOrFail($id);
+
+            DB::beginTransaction();
+
+            if ($menuItem->image_path && Storage::disk('public')->exists($menuItem->image_path)) {
+                Storage::disk('public')->delete($menuItem->image_path);
+            }
+
+            $menuName = $menuItem->name;
+            $menuItem->delete();
+
+            DB::commit();
+
+            Log::info('Menu item deleted', [
+                'menu_name' => $menuName,
+                'deleted_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu berhasil dihapus.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to delete menu item', [
+                'menu_item_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus menu.',
+            ], 500);
+        }
+    }
+
+    public function toggleMenuItemStatus($id)
+    {
+        try {
+            $menuItem = MenuItem::findOrFail($id);
+            $currentStatus = (bool) $menuItem->is_active;
+            $newStatus = !$currentStatus;
+            $menuItem->update(['is_active' => $newStatus ? 1 : 0]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status menu berhasil diubah.',
+                'is_active' => (bool) $menuItem->fresh()->is_active,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle menu item status', [
+                'menu_item_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status menu.',
+            ], 500);
+        }
     }
 
     /**

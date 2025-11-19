@@ -1,545 +1,800 @@
-@extends('layouts.app')
+@extends('admin.layout')
+
+@section('title', 'Kelola Restoran')
+@section('page-title', 'Kelola Restoran & Menu')
 
 @section('content')
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1 class="h3 mb-0">Kelola Restoran</h1>
-        </div>
-        <div class="col-md-4 text-end">
-            <button class="btn btn-primary" onclick="openAddRestaurantModal()">
-                <i class="fas fa-plus"></i> Tambah Restoran
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-utensils me-2"></i>
+                Daftar Restoran
+            </h5>
+            <button class="btn btn-primary btn-sm" id="btnAddRestaurant">
+                <i class="fas fa-plus me-1"></i>
+                Tambah Restoran
             </button>
         </div>
     </div>
-
-    <!-- Restaurants Grid -->
-    <div class="row" id="restaurantsContainer">
-        @forelse($restaurants as $restaurant)
-            <div class="col-md-4 mb-4" id="restaurant-{{ $restaurant->id }}">
-                <div class="card h-100">
-                    <div class="card-img-top" style="height: 200px; background-size: cover; background-position: center;" data-image-url="{{ $restaurant->image_path ? asset('storage/' . $restaurant->image_path) : '/images/placeholder.png' }}"></div>
-                    <div class="card-body">
-                        <h5 class="card-title">{{ $restaurant->name }}</h5>
-                        <p class="card-text text-muted small">{{ Str::limit($restaurant->description, 80) }}</p>
-                        <div class="mb-3">
-                            <small class="badge bg-info">{{ $restaurant->cuisine_type }}</small>
-                            <small class="badge bg-secondary">{{ $restaurant->menuItems->count() }} Menu</small>
+    <div class="card-body">
+        @if($restaurants->isEmpty())
+            <div class="text-center py-4">
+                <i class="fas fa-utensils fa-2x text-muted mb-2"></i>
+                <p class="text-muted mb-0">Belum ada restoran. Tambahkan restoran baru untuk halaman /restaurants.</p>
+            </div>
+        @else
+            <div class="row g-3">
+                @foreach($restaurants as $restaurant)
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="ratio ratio-16x9 bg-light">
+                                @php
+                                    $imageUrl = $restaurant->image_url ?? '/images/heroresto.png';
+                                @endphp
+                                <img src="{{ $imageUrl }}" class="card-img-top" alt="{{ $restaurant->name }}" style="object-fit: cover;">
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="card-title mb-1">{{ $restaurant->name }}</h5>
+                                        @if($restaurant->cuisine_type)
+                                            <span class="badge bg-primary">{{ $restaurant->cuisine_type }}</span>
+                                        @endif
+                                    </div>
+                                    <span class="badge bg-secondary">{{ $restaurant->menuItems->count() }} menu</span>
+                                </div>
+                                @if($restaurant->description)
+                                    <p class="card-text text-muted mb-2" style="font-size: 0.9rem;">
+                                        {{ \Illuminate\Support\Str::limit($restaurant->description, 110) }}
+                                    </p>
+                                @endif
+                                @if(is_array($restaurant->features) && count($restaurant->features))
+                                    <div class="mb-2">
+                                        @foreach($restaurant->features as $feature)
+                                            @if(!empty($feature))
+                                                <span class="badge bg-light text-dark border me-1 mb-1">{{ $feature }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if($restaurant->operating_hours || $restaurant->location)
+                                    <div class="mb-3" style="font-size: 0.85rem;">
+                                        @if($restaurant->operating_hours)
+                                            <div class="text-muted"><i class="fas fa-clock me-1"></i>{{ $restaurant->operating_hours }}</div>
+                                        @endif
+                                        @if($restaurant->location)
+                                            <div class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ $restaurant->location }}</div>
+                                        @endif
+                                    </div>
+                                @endif
+                                <div class="mt-auto d-flex justify-content-between">
+                                    <button class="btn btn-outline-primary btn-sm btn-edit-restaurant" data-id="{{ $restaurant->id }}">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm btn-manage-menu" data-id="{{ $restaurant->id }}" data-name="{{ $restaurant->name }}">
+                                        <i class="fas fa-book-open me-1"></i>Menu
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm btn-delete-restaurant" data-id="{{ $restaurant->id }}" data-name="{{ $restaurant->name }}">
+                                        <i class="fas fa-trash me-1"></i>Hapus
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-footer bg-white border-top">
-                        <button class="btn btn-sm btn-warning" data-restaurant-id="{{ $restaurant->id }}" onclick="editRestaurant(this.dataset.restaurantId)">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-info" data-restaurant-id="{{ $restaurant->id }}" onclick="manageMenuItems(this.dataset.restaurantId)">
-                            <i class="fas fa-utensils"></i> Menu
-                        </button>
-                        <button class="btn btn-sm btn-danger" data-restaurant-id="{{ $restaurant->id }}" onclick="deleteRestaurant(this.dataset.restaurantId)">
-                            <i class="fas fa-trash"></i> Hapus
-                        </button>
-                    </div>
-                </div>
+                @endforeach
             </div>
-        @empty
-            <div class="col-12">
-                <div class="alert alert-info">Belum ada restoran. Silakan tambahkan restoran baru.</div>
-            </div>
-        @endforelse
+        @endif
     </div>
 </div>
 
-<!-- Add/Edit Restaurant Modal -->
-<div class="modal fade" id="restaurantModal" tabindex="-1">
+<!-- Restaurant Modal (Create / Edit) -->
+<div class="modal fade" id="restaurantModal" tabindex="-1" aria-labelledby="restaurantModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="restaurantModalTitle">Tambah Restoran</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="restaurantModalLabel">Tambah Restoran</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <form id="restaurantForm" enctype="multipart/form-data">
-                    @csrf
-                    <input type="hidden" id="restaurantId">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Nama Restoran</label>
-                        <input type="text" class="form-control" id="restaurantName" name="name" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Deskripsi</label>
-                        <textarea class="form-control" id="restaurantDescription" name="description" rows="3" required></textarea>
-                    </div>
-
+            <form id="restaurantForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="restaurant_id" name="restaurant_id">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tipe Masakan</label>
-                            <input type="text" class="form-control" id="restaurantCuisineType" name="cuisine_type" placeholder="Contoh: Masakan Jawa">
+                        <div class="col-md-7">
+                            <div class="mb-3">
+                                <label for="restaurant_name" class="form-label">Nama Restoran</label>
+                                <input type="text" class="form-control" id="restaurant_name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="restaurant_description" class="form-label">Deskripsi</label>
+                                <textarea class="form-control" id="restaurant_description" name="description" rows="4" placeholder="Deskripsi singkat restoran..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="restaurant_features" class="form-label">Tag Restoran</label>
+                                <input type="text" class="form-control" id="restaurant_features" name="features" placeholder="Contoh: Halal, Keluarga, Outdoor, Live Music">
+                                <div class="form-text">Pisahkan dengan koma. Tag akan tampil sebagai badge di bawah deskripsi.</div>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Jam Operasional</label>
-                            <input type="text" class="form-control" id="restaurantOperatingHours" name="operating_hours" placeholder="Contoh: 08:00 - 21:00">
+                        <div class="col-md-5">
+                            <div class="mb-3">
+                                <label for="cuisine_type" class="form-label">Tipe Masakan</label>
+                                <input type="text" class="form-control" id="cuisine_type" name="cuisine_type" placeholder="Misal: Masakan Jawa, Chinese Cuisine">
+                            </div>
+                            <div class="mb-3">
+                                <label for="operating_hours" class="form-label">Jam Operasional</label>
+                                <input type="text" class="form-control" id="operating_hours" name="operating_hours" placeholder="Misal: 08:00 - 21:00 WIB">
+                            </div>
+                            <div class="mb-3">
+                                <label for="location" class="form-label">Lokasi</label>
+                                <input type="text" class="form-control" id="location" name="location" placeholder="Alamat restoran">
+                            </div>
                         </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Lokasi</label>
-                        <input type="text" class="form-control" id="restaurantLocation" name="location" placeholder="Contoh: Jl. Raya Selecta No. 1">
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="restaurant_image" class="form-label">Foto Restoran</label>
+                                <input type="file" class="form-control" id="restaurant_image" name="image" accept="image/*">
+                                <div class="form-text">Max 5MB, format: JPG, PNG, JPEG, WEBP.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Preview Foto</label>
+                            <div class="border rounded d-flex align-items-center justify-content-center bg-light" style="height: 160px; overflow: hidden;">
+                                <img id="restaurant_image_preview" src="" alt="Preview" style="max-height: 100%; max-width: 100%; display: none; object-fit: cover;">
+                                <span id="restaurant_image_placeholder" class="text-muted" style="font-size: 0.9rem;">Belum ada foto</span>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Fitur (pisahkan dengan koma)</label>
-                        <input type="text" class="form-control" id="restaurantFeatures" name="features" placeholder="Contoh: Family Friendly, Halal, WiFi">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Foto Restoran</label>
-                        <input type="file" class="form-control" id="restaurantImage" name="image" accept="image/*">
-                        <div id="restaurantImagePreview" class="mt-2"></div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                    </div>
-                </form>
-            </div>
+                    <div class="alert alert-danger mt-3 d-none" id="restaurantErrorBox"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="restaurantSubmitBtn">Simpan</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <!-- Menu Items Modal -->
-<div class="modal fade" id="menuItemsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+<div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="menuItemsModalTitle">Kelola Menu</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div>
+                    <h5 class="modal-title" id="menuModalLabel">Menu Restoran</h5>
+                    <small class="text-muted" id="menuModalSubtitle"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row mb-3">
-                    <div class="col-md-8">
-                        <h6>Daftar Menu</h6>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <button class="btn btn-sm btn-success" onclick="openAddMenuItemModal()">
-                            <i class="fas fa-plus"></i> Tambah Menu
-                        </button>
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="fas fa-book-open me-2"></i>Daftar Menu</h6>
+                    <button class="btn btn-primary btn-sm" id="btnAddMenuItem">
+                        <i class="fas fa-plus me-1"></i>Tambah Menu
+                    </button>
                 </div>
-                <div id="menuItemsContainer"></div>
+                <div id="menuItemsContainer">
+                    <div class="text-center py-4" id="menuLoading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2 mb-0">Memuat data menu...</p>
+                    </div>
+                    <div id="menuEmpty" class="text-center py-4 d-none">
+                        <i class="fas fa-clipboard-list fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Belum ada menu untuk restoran ini.</p>
+                    </div>
+                    <div id="menuList" class="row g-3 d-none"></div>
+                </div>
+                <div class="alert alert-danger mt-3 d-none" id="menuErrorBox"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Add/Edit Menu Item Modal -->
-<div class="modal fade" id="menuItemModal" tabindex="-1">
+<!-- Menu Item Modal (Create / Edit) -->
+<div class="modal fade" id="menuItemModal" tabindex="-1" aria-labelledby="menuItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="menuItemModalTitle">Tambah Menu</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="menuItemModalLabel">Tambah Menu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="menuItemForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="menu_item_id" name="menu_item_id">
+                    <input type="hidden" id="menu_restaurant_id" name="restaurant_id">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <div class="mb-3">
+                                <label class="form-label">Nama Menu</label>
+                                <input type="text" class="form-control" id="menu_name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Deskripsi</label>
+                                <textarea class="form-control" id="menu_description" name="description" rows="3" placeholder="Deskripsi menu..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Harga</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="number" class="form-control" id="menu_price" name="price" min="0" step="1000" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="mb-3">
+                                <label class="form-label">Kategori</label>
+                                <select class="form-select" id="menu_category" name="category" required>
+                                    <option value="makanan">Makanan</option>
+                                    <option value="minuman">Minuman</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Foto Menu</label>
+                                <input type="file" class="form-control" id="menu_image" name="image" accept="image/*">
+                                <div class="form-text">Max 5MB, format: JPG, PNG, JPEG, WEBP.</div>
+                            </div>
+                            <label class="form-label">Preview Foto</label>
+                            <div class="border rounded d-flex align-items-center justify-content-center bg-light" style="height: 160px; overflow: hidden;">
+                                <img id="menu_image_preview" src="" alt="Preview" style="max-height: 100%; max-width: 100%; display: none; object-fit: cover;">
+                                <span id="menu_image_placeholder" class="text-muted" style="font-size: 0.9rem;">Belum ada foto</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3 d-none" id="menuItemErrorBox"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="menuItemSubmitBtn">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteRestaurantModal" tabindex="-1" aria-labelledby="deleteRestaurantModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRestaurantModalLabel">Konfirmasi Hapus Restoran</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="menuItemForm" enctype="multipart/form-data">
-                    @csrf
-                    <input type="hidden" id="menuItemId">
-                    <input type="hidden" id="menuItemRestaurantId" name="restaurant_id">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Nama Menu</label>
-                        <input type="text" class="form-control" id="menuItemName" name="name" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Deskripsi</label>
-                        <textarea class="form-control" id="menuItemDescription" name="description" rows="3" required></textarea>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Kategori</label>
-                            <select class="form-control" id="menuItemCategory" name="category" required>
-                                <option value="">Pilih Kategori</option>
-                                <option value="makanan">Makanan</option>
-                                <option value="minuman">Minuman</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Harga (Rp)</label>
-                            <input type="number" class="form-control" id="menuItemPrice" name="price" min="0" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Foto Menu</label>
-                        <input type="file" class="form-control" id="menuItemImage" name="image" accept="image/*">
-                        <div id="menuItemImagePreview" class="mt-2"></div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                    </div>
-                </form>
+                <p>Apakah Anda yakin ingin menghapus restoran <strong id="delete_restaurant_name"></strong>?</p>
+                <p class="text-danger small mb-0">Semua menu yang terkait juga akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteRestaurant">Hapus</button>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    .card-img-top {
-        border-radius: 0.25rem 0.25rem 0 0;
-    }
-    
-    .modal-body {
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-</style>
+<div class="modal fade" id="deleteMenuModal" tabindex="-1" aria-labelledby="deleteMenuModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteMenuModalLabel">Konfirmasi Hapus Menu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin menghapus menu <strong id="delete_menu_name"></strong>?</p>
+                <p class="text-danger small mb-0">Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteMenu">Hapus</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+@endsection
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+(function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    const routes = {
+        getRestaurant: "{{ route('admin.restaurants.get', ':id') }}",
+        storeRestaurant: "{{ route('admin.restaurants.store') }}",
+        updateRestaurant: "{{ route('admin.restaurants.update', ':id') }}",
+        deleteRestaurant: "{{ route('admin.restaurants.delete', ':id') }}",
+        getMenuItem: "{{ route('admin.menu-items.get', ':id') }}",
+        storeMenuItem: "{{ route('admin.menu-items.store') }}",
+        updateMenuItem: "{{ route('admin.menu-items.update', ':id') }}",
+        deleteMenuItem: "{{ route('admin.menu-items.delete', ':id') }}",
+        toggleMenuItemStatus: "{{ route('admin.menu-items.toggle-status', ':id') }}"
+    };
+
+    function buildUrl(template, id) {
+        return template.replace(':id', id);
+    }
+
     let currentRestaurantId = null;
-    let currentMenuItemId = null;
-    const restaurantModal = new bootstrap.Modal(document.getElementById('restaurantModal'));
-    const menuItemsModal = new bootstrap.Modal(document.getElementById('menuItemsModal'));
-    const menuItemModal = new bootstrap.Modal(document.getElementById('menuItemModal'));
+    let currentRestaurantName = '';
+    let deletingRestaurantId = null;
+    let deletingMenuId = null;
 
-    // Set background images from data attributes
-    document.querySelectorAll('.card-img-top').forEach(el => {
-        const imageUrl = el.dataset.imageUrl;
-        if (imageUrl) {
-            el.style.backgroundImage = `url('${imageUrl}')`;
+    // Helpers
+    function showError($box, errors) {
+        if (!errors) {
+            $box.addClass('d-none');
+            $box.html('');
+            return;
         }
-    });
-
-    // Open Add Restaurant Modal
-    function openAddRestaurantModal() {
-        document.getElementById('restaurantId').value = '';
-        document.getElementById('restaurantForm').reset();
-        document.getElementById('restaurantModalTitle').textContent = 'Tambah Restoran';
-        document.getElementById('restaurantImagePreview').innerHTML = '';
-        restaurantModal.show();
+        let html = '';
+        if (typeof errors === 'string') {
+            html = errors;
+        } else {
+            html = '<ul class="mb-0">';
+            Object.keys(errors).forEach(function(key) {
+                errors[key].forEach(function(msg) {
+                    html += '<li>' + msg + '</li>';
+                });
+            });
+            html += '</ul>';
+        }
+        $box.removeClass('d-none').html(html);
     }
 
-    // Edit Restaurant
-    function editRestaurant(id) {
-        fetch(`/admin/restaurants/${id}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const restaurant = data.restaurant;
-                document.getElementById('restaurantId').value = id;
-                document.getElementById('restaurantName').value = restaurant.name;
-                document.getElementById('restaurantDescription').value = restaurant.description;
-                document.getElementById('restaurantCuisineType').value = restaurant.cuisine_type || '';
-                document.getElementById('restaurantOperatingHours').value = restaurant.operating_hours || '';
-                document.getElementById('restaurantLocation').value = restaurant.location || '';
-                document.getElementById('restaurantFeatures').value = (restaurant.features || []).join(', ');
-                
-                if (restaurant.image_path) {
-                    document.getElementById('restaurantImagePreview').innerHTML = `
-                        <img src="/storage/${restaurant.image_path}" style="max-width: 200px; border-radius: 4px;">
-                    `;
-                }
-                
-                document.getElementById('restaurantModalTitle').textContent = 'Edit Restoran';
-                restaurantModal.show();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal memuat data restoran');
-        });
+    function formatPrice(value) {
+        const number = parseInt(value, 10) || 0;
+        return 'Rp ' + number.toLocaleString('id-ID');
     }
 
-    // Delete Restaurant
-    function deleteRestaurant(id) {
-        if (!confirm('Apakah Anda yakin ingin menghapus restoran ini?')) return;
-
-        fetch(`/admin/restaurants/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                document.getElementById(`restaurant-${id}`).remove();
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal menghapus restoran');
-        });
-    }
-
-    // Save Restaurant
-    document.getElementById('restaurantForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const restaurantId = document.getElementById('restaurantId').value;
-        const formData = new FormData(this);
-        
-        const url = restaurantId ? `/admin/restaurants/${restaurantId}` : '/admin/restaurants';
-        const method = restaurantId ? 'PUT' : 'POST';
-
-        fetch(url, {
-            method: method,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                restaurantModal.hide();
-                location.reload();
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal menyimpan restoran');
-        });
-    });
-
-    // Image Preview
-    document.getElementById('restaurantImage').addEventListener('change', function(e) {
-        const file = e.target.files[0];
+    function setImagePreview(input, $img, $placeholder) {
+        const file = input.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(event) {
-                document.getElementById('restaurantImagePreview').innerHTML = `
-                    <img src="${event.target.result}" style="max-width: 200px; border-radius: 4px;">
-                `;
+            reader.onload = function(e) {
+                $img.attr('src', e.target.result).show();
+                $placeholder.hide();
             };
             reader.readAsDataURL(file);
+        } else {
+            $img.hide();
+            $placeholder.show();
         }
-    });
-
-    // Manage Menu Items
-    function manageMenuItems(restaurantId) {
-        currentRestaurantId = restaurantId;
-        document.getElementById('menuItemRestaurantId').value = restaurantId;
-        
-        fetch(`/admin/restaurants/${restaurantId}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const restaurant = data.restaurant;
-                document.getElementById('menuItemsModalTitle').textContent = `Menu - ${restaurant.name}`;
-                displayMenuItems(restaurant.menu_items || []);
-                menuItemsModal.show();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal memuat menu');
-        });
     }
 
-    // Display Menu Items
-    function displayMenuItems(menuItems) {
-        const container = document.getElementById('menuItemsContainer');
-        
-        if (menuItems.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">Belum ada menu. Silakan tambahkan menu baru.</div>';
+    // Restaurant handlers
+    $('#btnAddRestaurant').on('click', function() {
+        $('#restaurantModalLabel').text('Tambah Restoran');
+        $('#restaurantForm')[0].reset();
+        $('#restaurant_id').val('');
+        $('#restaurant_features').val('');
+        $('#restaurant_image_preview').hide().attr('src', '');
+        $('#restaurant_image_placeholder').show();
+        showError($('#restaurantErrorBox'), null);
+        $('#restaurantSubmitBtn').prop('disabled', false).text('Simpan');
+        const modal = new bootstrap.Modal(document.getElementById('restaurantModal'));
+        modal.show();
+    });
+
+    $('.btn-edit-restaurant').on('click', function() {
+        const id = $(this).data('id');
+        $('#restaurantModalLabel').text('Edit Restoran');
+        $('#restaurantForm')[0].reset();
+        $('#restaurant_id').val(id);
+        showError($('#restaurantErrorBox'), null);
+        $('#restaurantSubmitBtn').prop('disabled', false).text('Update');
+
+        $.ajax({
+            url: buildUrl(routes.getRestaurant, id),
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (!response.success || !response.data) {
+                    alert(response.message || 'Gagal mengambil data restoran.');
+                    return;
+                }
+                const r = response.data;
+                $('#restaurant_name').val(r.name || '');
+                $('#restaurant_description').val(r.description || '');
+                $('#cuisine_type').val(r.cuisine_type || '');
+                $('#operating_hours').val(r.operating_hours || '');
+                $('#location').val(r.location || '');
+                const features = Array.isArray(r.features) ? r.features.join(', ') : '';
+                $('#restaurant_features').val(features);
+
+                const imageUrl = r.image_url || '';
+                if (imageUrl) {
+                    $('#restaurant_image_preview').attr('src', imageUrl).show();
+                    $('#restaurant_image_placeholder').hide();
+                } else {
+                    $('#restaurant_image_preview').hide();
+                    $('#restaurant_image_placeholder').show();
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('restaurantModal'));
+                modal.show();
+            },
+            error: function() {
+                alert('Terjadi kesalahan saat mengambil data restoran.');
+            }
+        });
+    });
+
+    $('#restaurant_image').on('change', function() {
+        setImagePreview(this, $('#restaurant_image_preview'), $('#restaurant_image_placeholder'));
+    });
+
+    $('#restaurantForm').on('submit', function(e) {
+        e.preventDefault();
+        const id = $('#restaurant_id').val();
+        const isEdit = !!id;
+        const url = isEdit ? buildUrl(routes.updateRestaurant, id) : routes.storeRestaurant;
+
+        const formData = new FormData(this);
+        if (isEdit) {
+            formData.append('_method', 'PUT');
+        }
+
+        $('#restaurantSubmitBtn').prop('disabled', true).text('Menyimpan...');
+        showError($('#restaurantErrorBox'), null);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    showError($('#restaurantErrorBox'), response.errors || response.message || 'Terjadi kesalahan.');
+                    $('#restaurantSubmitBtn').prop('disabled', false).text('Simpan');
+                }
+            },
+            error: function(xhr) {
+                const res = xhr.responseJSON;
+                showError($('#restaurantErrorBox'), res?.errors || res?.message || 'Terjadi kesalahan.');
+                $('#restaurantSubmitBtn').prop('disabled', false).text('Simpan');
+            }
+        });
+    });
+
+    $('.btn-delete-restaurant').on('click', function() {
+        deletingRestaurantId = $(this).data('id');
+        $('#delete_restaurant_name').text($(this).data('name'));
+        const modal = new bootstrap.Modal(document.getElementById('deleteRestaurantModal'));
+        modal.show();
+    });
+
+    $('#confirmDeleteRestaurant').on('click', function() {
+        if (!deletingRestaurantId) return;
+        const url = buildUrl(routes.deleteRestaurant, deletingRestaurantId);
+        $(this).prop('disabled', true).text('Menghapus...');
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: { _method: 'DELETE' },
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message || 'Terjadi kesalahan saat menghapus restoran.');
+                }
+            },
+            error: function() {
+                alert('Terjadi kesalahan saat menghapus restoran.');
+            },
+            complete: function() {
+                $('#confirmDeleteRestaurant').prop('disabled', false).text('Hapus');
+            }
+        });
+    });
+
+    // Menu management
+    function renderMenuItems(restaurant) {
+        const $list = $('#menuList');
+        const items = restaurant.menu_items || [];
+
+        if (!items.length) {
+            $('#menuLoading').addClass('d-none');
+            $('#menuList').addClass('d-none');
+            $('#menuEmpty').removeClass('d-none');
             return;
         }
 
-        container.innerHTML = menuItems.map(item => `
-            <div class="card mb-2" id="menu-item-${item.id}">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            ${item.image_path ? `<img src="/storage/${item.image_path}" style="width: 100%; border-radius: 4px;">` : '<div class="bg-light p-3 text-center">No Image</div>'}
-                        </div>
-                        <div class="col-md-7">
-                            <h6 class="mb-1">${item.name}</h6>
-                            <p class="text-muted small mb-1">${item.description}</p>
-                            <small>
-                                <span class="badge ${item.category === 'makanan' ? 'bg-warning' : 'bg-info'}">${item.category}</span>
-                                <span class="badge bg-success">Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</span>
-                                <span class="badge ${item.is_active ? 'bg-success' : 'bg-danger'}">${item.is_active ? 'Aktif' : 'Nonaktif'}</span>
-                            </small>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <button class="btn btn-sm btn-warning" onclick="editMenuItem(${item.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-info" onclick="toggleMenuItemStatus(${item.id})">
-                                <i class="fas fa-toggle-${item.is_active ? 'on' : 'off'}"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteMenuItem(${item.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
+        let html = '';
+        items.forEach(function(item) {
+            const imageUrl = item.image_url || '';
+            const categoryLabel = item.category === 'minuman' ? 'Minuman' : 'Makanan';
+            const badgeClass = item.category === 'minuman' ? 'bg-info' : 'bg-success';
+            const rawIsActive = item.is_active;
+            const isActive = rawIsActive === true || rawIsActive === 1 || rawIsActive === '1';
 
-    // Open Add Menu Item Modal
-    function openAddMenuItemModal() {
-        document.getElementById('menuItemId').value = '';
-        document.getElementById('menuItemForm').reset();
-        document.getElementById('menuItemModalTitle').textContent = 'Tambah Menu';
-        document.getElementById('menuItemImagePreview').innerHTML = '';
-        menuItemModal.show();
-    }
-
-    // Edit Menu Item
-    function editMenuItem(id) {
-        fetch(`/admin/menu-items/${id}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
+            html += '<div class="col-md-4">';
+            html += '  <div class="card h-100">';
+            html += '    <div class="ratio ratio-16x9 bg-light">';
+            if (imageUrl) {
+                html += '      <img src="' + imageUrl + '" class="card-img-top" style="object-fit: cover;" alt="' + (item.name || '') + '">';
+            } else {
+                html += '      <div class="d-flex align-items-center justify-content-center text-muted" style="font-size: 0.9rem;">Tidak ada foto</div>';
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const item = data.menu_item;
-                document.getElementById('menuItemId').value = id;
-                document.getElementById('menuItemName').value = item.name;
-                document.getElementById('menuItemDescription').value = item.description;
-                document.getElementById('menuItemCategory').value = item.category;
-                document.getElementById('menuItemPrice').value = item.price;
-                
-                if (item.image_path) {
-                    document.getElementById('menuItemImagePreview').innerHTML = `
-                        <img src="/storage/${item.image_path}" style="max-width: 200px; border-radius: 4px;">
-                    `;
+            html += '    </div>';
+            html += '    <div class="card-body d-flex flex-column">';
+            html += '      <div class="d-flex justify-content-between align-items-start mb-1">';
+            html += '        <div>'; 
+            html += '          <h6 class="mb-1">' + (item.name || '') + '</h6>';
+            html += '          <span class="badge ' + badgeClass + ' me-1">' + categoryLabel + '</span>';
+            html += '          <span class="badge ' + (isActive ? 'bg-success' : 'bg-secondary') + '">' + (isActive ? 'Aktif' : 'Nonaktif') + '</span>';
+            html += '        </div>';
+            html += '        <div class="text-end fw-bold text-primary" style="font-size: 0.9rem;">' + formatPrice(item.price) + '</div>';
+            html += '      </div>';
+            if (item.description) {
+                html += '      <p class="text-muted mb-2" style="font-size: 0.85rem;">' + item.description + '</p>';
+            }
+            html += '      <div class="mt-auto d-flex justify-content-between">';
+            html += '        <button class="btn btn-outline-primary btn-sm btn-edit-menu" data-id="' + item.id + '"><i class="fas fa-edit me-1"></i>Edit</button>';
+            html += '        <button class="btn btn-outline-warning btn-sm btn-toggle-menu" data-id="' + item.id + '" data-active="' + (isActive ? '1' : '0') + '"><i class="fas ' + (isActive ? 'fa-eye-slash' : 'fa-eye') + ' me-1"></i>' + (isActive ? 'Nonaktifkan' : 'Aktifkan') + '</button>';
+            html += '        <button class="btn btn-outline-danger btn-sm btn-delete-menu" data-id="' + item.id + '" data-name="' + (item.name || '') + '"><i class="fas fa-trash me-1"></i>Hapus</button>';
+            html += '      </div>';
+            html += '    </div>';
+            html += '  </div>';
+            html += '</div>';
+        });
+
+        $list.html(html);
+        $('#menuLoading').addClass('d-none');
+        $('#menuEmpty').addClass('d-none');
+        $('#menuList').removeClass('d-none');
+    }
+
+    function loadRestaurantMenus(id, name) {
+        currentRestaurantId = id;
+        currentRestaurantName = name || '';
+        $('#menuModalLabel').text('Menu ' + (currentRestaurantName || 'Restoran'));
+        $('#menuModalSubtitle').text('Kelola menu untuk ' + (currentRestaurantName || 'restoran terpilih'));
+        $('#menuLoading').removeClass('d-none');
+        $('#menuEmpty').addClass('d-none');
+        $('#menuList').addClass('d-none').empty();
+        showError($('#menuErrorBox'), null);
+
+        $.ajax({
+            url: buildUrl(routes.getRestaurant, id),
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (!response.success || !response.data) {
+                    showError($('#menuErrorBox'), response.message || 'Gagal memuat data menu.');
+                    $('#menuLoading').addClass('d-none');
+                    return;
                 }
-                
-                document.getElementById('menuItemModalTitle').textContent = 'Edit Menu';
-                menuItemModal.show();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal memuat data menu');
-        });
-    }
-
-    // Delete Menu Item
-    function deleteMenuItem(id) {
-        if (!confirm('Apakah Anda yakin ingin menghapus menu ini?')) return;
-
-        fetch(`/admin/menu-items/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                document.getElementById(`menu-item-${id}`).remove();
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal menghapus menu');
-        });
-    }
-
-    // Toggle Menu Item Status
-    function toggleMenuItemStatus(id) {
-        fetch(`/admin/menu-items/${id}/toggle-status`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                manageMenuItems(currentRestaurantId);
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal mengubah status menu');
-        });
-    }
-
-    // Save Menu Item
-    document.getElementById('menuItemForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const menuItemId = document.getElementById('menuItemId').value;
-        const formData = new FormData(this);
-        
-        const url = menuItemId ? `/admin/menu-items/${menuItemId}` : '/admin/menu-items';
-        const method = menuItemId ? 'PUT' : 'POST';
-
-        fetch(url, {
-            method: method,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
+                renderMenuItems(response.data);
             },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                menuItemModal.hide();
-                manageMenuItems(currentRestaurantId);
-            } else {
-                alert(data.message);
+            error: function() {
+                showError($('#menuErrorBox'), 'Terjadi kesalahan saat memuat data menu.');
+                $('#menuLoading').addClass('d-none');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Gagal menyimpan menu');
+        });
+    }
+
+    $('.btn-manage-menu').on('click', function() {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        const modal = new bootstrap.Modal(document.getElementById('menuModal'));
+        modal.show();
+        loadRestaurantMenus(id, name);
+    });
+
+    $('#btnAddMenuItem').on('click', function() {
+        if (!currentRestaurantId) return;
+        $('#menuItemModalLabel').text('Tambah Menu');
+        $('#menuItemForm')[0].reset();
+        $('#menu_item_id').val('');
+        $('#menu_restaurant_id').val(currentRestaurantId);
+        $('#menu_image_preview').hide().attr('src', '');
+        $('#menu_image_placeholder').show();
+        showError($('#menuItemErrorBox'), null);
+        $('#menuItemSubmitBtn').prop('disabled', false).text('Simpan');
+        const menuModalEl = document.getElementById('menuModal');
+        const existingMenuModal = bootstrap.Modal.getInstance(menuModalEl);
+        if (existingMenuModal) {
+            existingMenuModal.hide();
+        }
+
+        const menuItemModalEl = document.getElementById('menuItemModal');
+        const modal = new bootstrap.Modal(menuItemModalEl);
+        modal.show();
+
+        menuItemModalEl.addEventListener('hidden.bs.modal', function handleHidden() {
+            menuItemModalEl.removeEventListener('hidden.bs.modal', handleHidden);
+            const menuModal = new bootstrap.Modal(menuModalEl);
+            menuModal.show();
         });
     });
 
-    // Menu Item Image Preview
-    document.getElementById('menuItemImage').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                document.getElementById('menuItemImagePreview').innerHTML = `
-                    <img src="${event.target.result}" style="max-width: 200px; border-radius: 4px;">
-                `;
-            };
-            reader.readAsDataURL(file);
-        }
+    $('#menu_image').on('change', function() {
+        setImagePreview(this, $('#menu_image_preview'), $('#menu_image_placeholder'));
     });
+
+    $('#menuList').on('click', '.btn-edit-menu', function() {
+        const id = $(this).data('id');
+        if (!id) return;
+        $('#menuItemForm')[0].reset();
+        $('#menu_item_id').val(id);
+        showError($('#menuItemErrorBox'), null);
+        $('#menuItemSubmitBtn').prop('disabled', false).text('Update');
+
+        $.ajax({
+            url: buildUrl(routes.getMenuItem, id),
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (!response.success || !response.data) {
+                    alert(response.message || 'Gagal mengambil data menu.');
+                    return;
+                }
+                const m = response.data;
+                $('#menu_restaurant_id').val(m.restaurant_id || currentRestaurantId || '');
+                $('#menu_name').val(m.name || '');
+                $('#menu_description').val(m.description || '');
+                $('#menu_category').val(m.category || 'makanan');
+                $('#menu_price').val(m.price || '');
+
+                const imageUrl = m.image_url || '';
+                if (imageUrl) {
+                    $('#menu_image_preview').attr('src', imageUrl).show();
+                    $('#menu_image_placeholder').hide();
+                } else {
+                    $('#menu_image_preview').hide();
+                    $('#menu_image_placeholder').show();
+                }
+
+                $('#menuItemModalLabel').text('Edit Menu');
+                const menuModalEl = document.getElementById('menuModal');
+                const existingMenuModal = bootstrap.Modal.getInstance(menuModalEl);
+                if (existingMenuModal) {
+                    existingMenuModal.hide();
+                }
+
+                const menuItemModalEl = document.getElementById('menuItemModal');
+                const modal = new bootstrap.Modal(menuItemModalEl);
+                modal.show();
+
+                menuItemModalEl.addEventListener('hidden.bs.modal', function handleHidden() {
+                    menuItemModalEl.removeEventListener('hidden.bs.modal', handleHidden);
+                    const menuModal = new bootstrap.Modal(menuModalEl);
+                    menuModal.show();
+                });
+            },
+            error: function() {
+                alert('Terjadi kesalahan saat mengambil data menu.');
+            }
+        });
+    });
+
+    $('#menuItemForm').on('submit', function(e) {
+        e.preventDefault();
+        if (!currentRestaurantId) {
+            alert('Restoran tidak valid.');
+            return;
+        }
+        const id = $('#menu_item_id').val();
+        const isEdit = !!id;
+        const url = isEdit ? buildUrl(routes.updateMenuItem, id) : routes.storeMenuItem;
+
+        const formData = new FormData(this);
+        formData.set('restaurant_id', $('#menu_restaurant_id').val() || currentRestaurantId);
+        if (isEdit) {
+            formData.append('_method', 'PUT');
+        }
+
+        $('#menuItemSubmitBtn').prop('disabled', true).text('Menyimpan...');
+        showError($('#menuItemErrorBox'), null);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    // setelah simpan, refresh list menu
+                    const modalEl = document.getElementById('menuItemModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadRestaurantMenus(currentRestaurantId, currentRestaurantName);
+                } else {
+                    showError($('#menuItemErrorBox'), response.errors || response.message || 'Terjadi kesalahan.');
+                    $('#menuItemSubmitBtn').prop('disabled', false).text('Simpan');
+                }
+            },
+            error: function(xhr) {
+                const res = xhr.responseJSON;
+                showError($('#menuItemErrorBox'), res?.errors || res?.message || 'Terjadi kesalahan.');
+                $('#menuItemSubmitBtn').prop('disabled', false).text('Simpan');
+            }
+        });
+    });
+
+    $('#menuList').on('click', '.btn-delete-menu', function() {
+        deletingMenuId = $(this).data('id');
+        $('#delete_menu_name').text($(this).data('name'));
+        const modal = new bootstrap.Modal(document.getElementById('deleteMenuModal'));
+        modal.show();
+    });
+
+    $('#confirmDeleteMenu').on('click', function() {
+        if (!deletingMenuId) return;
+        const url = buildUrl(routes.deleteMenuItem, deletingMenuId);
+        $('#confirmDeleteMenu').prop('disabled', true).text('Menghapus...');
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: { _method: 'DELETE' },
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    const modalEl = document.getElementById('deleteMenuModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadRestaurantMenus(currentRestaurantId, currentRestaurantName);
+                } else {
+                    alert(response.message || 'Terjadi kesalahan saat menghapus menu.');
+                }
+            },
+            error: function() {
+                alert('Terjadi kesalahan saat menghapus menu.');
+            },
+            complete: function() {
+                $('#confirmDeleteMenu').prop('disabled', false).text('Hapus');
+            }
+        });
+    });
+
+    $('#menuList').on('click', '.btn-toggle-menu', function() {
+        const id = $(this).data('id');
+        if (!id) return;
+        const url = buildUrl(routes.toggleMenuItemStatus, id);
+        const $btn = $(this);
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    loadRestaurantMenus(currentRestaurantId, currentRestaurantName);
+                } else {
+                    alert(response.message || 'Terjadi kesalahan saat mengubah status menu.');
+                    $btn.prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert('Terjadi kesalahan saat mengubah status menu.');
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+})();
 </script>
-@endsection
+@endpush
