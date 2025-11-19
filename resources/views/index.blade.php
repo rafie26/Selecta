@@ -1058,171 +1058,36 @@ main {
             
             <div class="attractions-slider-container">
                 <div class="attractions-slider">
-                    <div class="attraction-card active" data-index="0">
-                        <div class="attraction-image">
-                            <img src="/images/familycoaster.png" alt="Roller Coaster">
+                    @if(isset($topAttractions) && $topAttractions->count())
+                        @foreach($topAttractions as $index => $attraction)
+                            <div class="attraction-card {{ $index === 0 ? 'active' : '' }}" data-index="{{ $index }}">
+                                <div class="attraction-image">
+                                    @php
+                                        $imageUrl = $attraction->image_url ?? '/images/familycoaster.png';
+                                    @endphp
+                                    <img src="{{ $imageUrl }}" alt="{{ $attraction->title }}">
+                                </div>
+                                <div class="attraction-content">
+                                    <h3>{{ $attraction->title }}</h3>
+                                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ $attraction->location ?? 'Selecta Malang' }}</p>
+                                    @if($attraction->description)
+                                        <p class="description">{{ $attraction->description }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="attraction-card active" data-index="0">
+                            <div class="attraction-image">
+                                <img src="/images/familycoaster.png" alt="Family Coaster">
+                            </div>
+                            <div class="attraction-content">
+                                <h3>Family Coaster</h3>
+                                <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
+                                <p class="description">Family Coaster menyajikan petualangan yang tak terlupakan bagi anda, anda akan dibawa melalui rute yang rindang dan pemandangan yang segar khas Selecta.</p>
+                            </div>
                         </div>
-                        <div class="attraction-content">
-                            <h3>Family Coaster</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Family Coaster menyajikan petualangan yang tak terlupakan bagi anda, anda akan dibawa melalui rute yang rindang dan pemandangan yang segar khas Selecta.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="1">
-                        <div class="attraction-image">
-                            <img src="/images/flyingfox.png" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Flying Fox</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Meluncur dari ketinggian dengan pemandangan alam Malang yang spektakuler.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="2">
-                        <div class="attraction-image">
-                            <img src="/images/sepedaair.png" alt="ATV">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Sepeda Air</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Ingin merasakan keseruan bersama partner atau keluarga anda? Cobalah wahana satu ini dan rasakan keseruan petualangan bersepeda mengayuh bersama di kolam air.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="3">
-                        <div class="attraction-image">
-                            <img src="/images/sepedaudara.png" alt="Zipline">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Sky Bike</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Sepeda Udara menyajikan pemandangan natural yang apik di Taman Rekreasi Selecta, udara yang sejuk dan Bunga bunga memanjakan Anda dan keluarga.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="4">
-                        <div class="attraction-image">
-                            <img src="/images/bianglala.png" alt="Ferris Wheel">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Bianglala</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Tidak ada yang lebih asyik dari Melihat pemandangan Wisata Selecta dari ketinggian, Nikmati Alam yang masih bersih dan sejuk Di Taman Rekreasi Selecta.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="5">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/wahana/kudakeliling.jpg" alt="Adventure Park">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Kuda Keliling</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Kuda keliling di Selecta Kota Batu adalah wahana klasik yang menawarkan pengalaman menunggangi kuda yang menyenangkan dan penuh nostalgia.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="6">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/wahana/gardentram.JPG" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Garden Tram</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Garden Tram di Taman Rekreasi Selecta, adalah wahana yang menawarkan pengalaman berkeliling taman dengan menggunakan tram mini yang nyaman.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="7">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/wahana/mobilayun.jpg" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Mobil Ayun</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Wahana Mobil Ayun Selecta, wahana seru yang dirancang untuk menghibur pengunjung, pengunjung akan naik ke dalam mobil ayun yang bergerak di lintasan.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="8">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/wahana/tagada.jpg" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Tagada</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Wahana Tagada adalah atraksi yang di Taman Rekreasi Selecta, wahana ini menawarkan pengalaman berputar dan bergoyang dengan penuh keseruan.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="9">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/wahana/kiddieride.jpg" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Kiddie Ride</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Kiddie ride adalah jenis wahana yang ada di selecta dirancang khusus untuk anak-anak kecil. Biasanya, wahana ini berbentuk kendaraan atau objek yang bisa bergerak</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="10">
-                        <div class="attraction-image">
-                            <img src="https://home.selectawisata.id/tr/img/dinoride.jpg" alt="Flying Fox">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Dino Ride</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Wahana Dino Ride di Selecta, di wahana ini, pengunjung bisa menikmati pengalaman berkendara di atas kendaraan berbentuk dinosaurus yang lucu dan berwarna-warni.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="11">
-                        <div class="attraction-image">
-                            <img src="/images/waterpark.png" alt="Waterpark">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Waterpark</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Nikmati keseruan bermain air di kolam renang modern dengan pemandangan alam yang menyegarkan.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="12">
-                        <div class="attraction-image">
-                            <img src="/images/tamanbunga.png" alt="Taman Bunga">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Taman Bunga</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Jelajahi keindahan taman bunga yang penuh warna dan aroma harum di kawasan Selecta.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="13">
-                        <div class="attraction-image">
-                            <img src="/images/cinema4d.png" alt="Cinema 4D">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Cinema 4D</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Bioskop dengan teknologi terkini ini siap menjadi salah satu Andalan dari Taman rekreasi Selecta, tidak hanya Visual tapi juga Motion dihadirkan dalam Bioskop ini.</p>
-                        </div>
-                    </div>
-
-                    <div class="attraction-card" data-index="14">
-                        <div class="attraction-image">
-                            <img src="/images/bahteraayun.png" alt="Outbound">
-                        </div>
-                        <div class="attraction-content">
-                            <h3>Bahtera Ayun</h3>
-                            <p class="location"><i class="fas fa-map-marker-alt"></i> Selecta Malang</p>
-                            <p class="description">Rasakan serunya melayang di udara bersama Bahtera Ayun, wahana ikonik yang memacu adrenalin sekaligus menghadirkan tawa tak terlupakan!</p>
-                        </div>
-                    </div>
-
+                    @endif
                 </div>
             </div>
         </div>
@@ -1351,6 +1216,7 @@ function initHorizontalAttractionsSlider() {
     const prevBtn = document.querySelector('.nav-btn.prev');
     const nextBtn = document.querySelector('.nav-btn.next');
     const currentSpan = document.querySelector('.page-counter .current');
+    const totalSpan = document.querySelector('.page-counter .total');
     const progressBar = document.querySelector('.progress-bar');
 
     if (!slider || !originalCards.length) {
@@ -1361,6 +1227,10 @@ function initHorizontalAttractionsSlider() {
     const totalOriginal = originalCards.length; // 15 cards
     const cardWidth = 320; // width + gap
     let currentIndex = 0; // start at 0 (first original card)
+
+    if (totalSpan) {
+        totalSpan.textContent = String(totalOriginal).padStart(2, '0');
+    }
     let isTransitioning = false;
 
     // Clone semua cards untuk infinite effect

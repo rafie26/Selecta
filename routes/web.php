@@ -190,6 +190,14 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::delete('/menu-items/{id}', [AdminController::class, 'deleteMenuItem'])->name('menu-items.delete');
     Route::post('/menu-items/{id}/toggle-status', [AdminController::class, 'toggleMenuItemStatus'])->name('menu-items.toggle-status');
 
+    // Top Wahana (Top Attractions) CRUD routes
+    Route::get('/top-attractions', [AdminController::class, 'topAttractions'])->name('top-attractions');
+    Route::get('/top-attractions/{id}', [AdminController::class, 'getTopAttraction'])->name('top-attractions.get');
+    Route::post('/top-attractions', [AdminController::class, 'storeTopAttraction'])->name('top-attractions.store');
+    Route::put('/top-attractions/{id}', [AdminController::class, 'updateTopAttraction'])->name('top-attractions.update');
+    Route::delete('/top-attractions/{id}', [AdminController::class, 'deleteTopAttraction'])->name('top-attractions.delete');
+    Route::post('/top-attractions/{id}/toggle-status', [AdminController::class, 'toggleTopAttractionStatus'])->name('top-attractions.toggle-status');
+
     // Keep existing Package management routes (used for Tickets CRUD under the hood)
     Route::get('/packages', [AdminController::class, 'packages'])->name('packages');
     Route::get('/packages/create', [AdminController::class, 'createPackage'])->name('packages.create');

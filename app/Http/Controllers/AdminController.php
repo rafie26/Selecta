@@ -11,6 +11,7 @@ use App\Models\RoomType;
 use App\Models\HotelPhoto;
 use App\Models\Restaurant;
 use App\Models\MenuItem;
+use App\Models\TopAttraction;
 use App\Services\MidtransService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -730,6 +731,226 @@ class AdminController extends Controller
         $restaurants = Restaurant::with('menuItems')->orderBy('name')->get();
         return view('admin.restaurants', compact('restaurants'));
      }
+
+    public function topAttractions()
+    {
+        $attractions = TopAttraction::orderBy('sort_order')->orderBy('created_at', 'desc')->get();
+        return view('admin.top-attractions', compact('attractions'));
+    }
+
+    public function getTopAttraction($id)
+    {
+        try {
+            $attraction = TopAttraction::findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $attraction,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Wahana tidak ditemukan.',
+            ], 404);
+        }
+    }
+
+    public function storeTopAttraction(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $sortOrder = TopAttraction::max('sort_order');
+            if ($sortOrder === null) {
+                $sortOrder = 0;
+            } else {
+                $sortOrder++;
+            }
+
+            $data = [
+                'title' => $request->title,
+                'location' => $request->location,
+                'description' => $request->description,
+                'is_active' => true,
+                'sort_order' => $sortOrder,
+            ];
+
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('top_attractions', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $attraction = TopAttraction::create($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Wahana berhasil ditambahkan.',
+                'data' => $attraction,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to store top attraction', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menambahkan wahana.',
+            ], 500);
+        }
+    }
+
+    public function updateTopAttraction(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $attraction = TopAttraction::findOrFail($id);
+
+            DB::beginTransaction();
+
+            $data = [
+                'title' => $request->title,
+                'location' => $request->location,
+                'description' => $request->description,
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($attraction->image_path && Storage::disk('public')->exists($attraction->image_path)) {
+                    Storage::disk('public')->delete($attraction->image_path);
+                }
+
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('top_attractions', $filename, 'public');
+                $data['image_path'] = $path;
+            }
+
+            $attraction->update($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Wahana berhasil diperbarui.',
+                'data' => $attraction->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to update top attraction', [
+                'attraction_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui wahana.',
+            ], 500);
+        }
+    }
+
+    public function deleteTopAttraction($id)
+    {
+        try {
+            $attraction = TopAttraction::findOrFail($id);
+
+            DB::beginTransaction();
+
+            if ($attraction->image_path && Storage::disk('public')->exists($attraction->image_path)) {
+                Storage::disk('public')->delete($attraction->image_path);
+            }
+
+            $title = $attraction->title;
+            $attraction->delete();
+
+            DB::commit();
+
+            Log::info('Top attraction deleted', [
+                'title' => $title,
+                'deleted_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Wahana berhasil dihapus.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to delete top attraction', [
+                'attraction_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus wahana.',
+            ], 500);
+        }
+    }
+
+    public function toggleTopAttractionStatus($id)
+    {
+        try {
+            $attraction = TopAttraction::findOrFail($id);
+            $attraction->is_active = !$attraction->is_active;
+            $attraction->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status wahana berhasil diubah.',
+                'is_active' => $attraction->fresh()->is_active,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle top attraction status', [
+                'attraction_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status wahana.',
+            ], 500);
+        }
+    }
 
     public function getRestaurant($id)
     {
