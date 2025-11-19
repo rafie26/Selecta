@@ -44,6 +44,12 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
     
+    // Password reset using OTP code (user)
+    Route::get('/password/forgot', [AuthController::class, 'showForgotPasswordForm'])->name('password.forgot');
+    Route::post('/password/forgot', [AuthController::class, 'sendResetCode'])->name('password.forgot.send');
+    Route::get('/password/reset-code', [AuthController::class, 'showResetWithCodeForm'])->name('password.reset.code');
+    Route::post('/password/reset-code', [AuthController::class, 'resetPasswordWithCode'])->name('password.reset.code.submit');
+    
     // Admin Login (separate route)
     Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
     Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.post');
@@ -56,6 +62,9 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
     Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 });
+
+// Email verification link
+Route::get('/email/verify/{id}/{token}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
 
 // Authenticated routes (perlu login)
 Route::middleware(['auth'])->group(function () {

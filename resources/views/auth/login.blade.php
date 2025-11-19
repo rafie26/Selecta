@@ -419,7 +419,7 @@
             </div>
 
             <div class="forgot-password">
-                <a href="#" onclick="alert('Fitur reset password akan segera tersedia!')">
+                <a href="{{ route('password.forgot') }}">
                     Lupa kata sandi?
                 </a>
             </div>

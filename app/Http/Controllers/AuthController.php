@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Validation\Rules;
 
@@ -29,9 +32,31 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $user = Auth::user();
+
+            // Pastikan email sudah terverifikasi
+            if (!$user->email_verified_at) {
+                Auth::logout();
+
+                $message = 'Email Anda belum terverifikasi. Silakan cek email Anda dan klik link verifikasi yang dikirimkan.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'errors' => [
+                            'email' => [$message],
+                        ],
+                    ], 403);
+                }
+
+                return back()->withErrors([
+                    'email' => $message,
+                ])->withInput($request->except('password'));
+            }
+
             $request->session()->regenerate();
             
-            $user = Auth::user();
             
             // Debug: Log user role for troubleshooting
             Log::info('User logged in', [
@@ -108,22 +133,24 @@ class AuthController extends Controller
             'phone_code' => $request->phone_code ?? '+62',
         ]);
 
-        Auth::login($user);
+        // Kirim email verifikasi (akun belum bisa digunakan sebelum email diverifikasi)
+        $this->sendEmailVerificationLink($user);
 
         // Check if it's an AJAX request
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Registrasi berhasil!',
+                'message' => 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun.',
                 'user' => [
                     'name' => $user->name,
                     'email' => $user->email,
-                ]
+                ],
+                'redirect' => route('login'),
             ]);
         }
         
-        // Regular form submission - redirect to home
-        return redirect('/')->with('success', 'Registrasi berhasil! Selamat datang, ' . $user->name . '!');
+        // Regular form submission - redirect ke halaman login
+        return redirect()->route('login')->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun sebelum login.');
     }
 
     public function logout(Request $request)
@@ -159,5 +186,200 @@ class AuthController extends Controller
         
         // Redirect based on user role
         return redirect($redirectUrl)->with('success', $message);
+    }
+
+    public function showForgotPasswordForm()
+    {
+        return view('auth.forgot-password');
+    }
+
+    public function sendResetCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.exists' => 'Email tidak terdaftar.',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(15);
+
+        $user->password_reset_code = $code;
+        $user->password_reset_expires_at = $expiresAt;
+        $user->save();
+
+        try {
+            Mail::raw(
+                "Kode reset kata sandi Anda adalah: {$code}. Kode ini berlaku selama 15 menit. Jangan berikan kode ini kepada siapa pun, termasuk pihak yang mengatasnamakan layanan kami.",
+                function ($message) use ($user) {
+                    $message->to($user->email, $user->name)
+                        ->subject('Kode Reset Kata Sandi - Selecta Wisata');
+                }
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to send password reset code email', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengirim kode ke email. Silakan coba lagi nanti.',
+                ], 500);
+            }
+
+            return back()->withErrors([
+                'email' => 'Gagal mengirim kode ke email. Silakan coba lagi nanti.',
+            ])->withInput();
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Kode reset kata sandi telah dikirim ke email Anda.',
+                'redirect_url' => route('password.reset.code', ['email' => $user->email]),
+            ]);
+        }
+
+        return redirect()
+            ->route('password.reset.code', ['email' => $user->email])
+            ->with('success', 'Kode reset kata sandi telah dikirim ke email Anda.');
+    }
+
+    public function showResetWithCodeForm(Request $request)
+    {
+        $email = $request->query('email');
+
+        return view('auth.reset-password-code', [
+            'email' => $email,
+        ]);
+    }
+
+    public function resetPasswordWithCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|confirmed|min:8',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.exists' => 'Email tidak terdaftar.',
+            'code.required' => 'Kode reset wajib diisi.',
+            'code.size' => 'Kode reset harus 6 digit.',
+            'password.required' => 'Kata sandi baru wajib diisi.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !$user->password_reset_code || !$user->password_reset_expires_at) {
+            return $this->resetErrorResponse($request, 'Kode reset tidak ditemukan. Silakan minta kode baru.');
+        }
+
+        if ($user->password_reset_code !== $request->code) {
+            return $this->resetErrorResponse($request, 'Kode reset tidak valid.');
+        }
+
+        if ($user->password_reset_expires_at->isPast()) {
+            return $this->resetErrorResponse($request, 'Kode reset sudah kadaluarsa. Silakan minta kode baru.');
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->password_reset_code = null;
+        $user->password_reset_expires_at = null;
+        $user->save();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Kata sandi berhasil direset. Silakan login dengan kata sandi baru Anda.',
+                'redirect_url' => route('login'),
+            ]);
+        }
+
+        return redirect()->route('login')->with('success', 'Kata sandi berhasil direset. Silakan login dengan kata sandi baru Anda.');
+    }
+
+    protected function resetErrorResponse(Request $request, string $message)
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'errors' => [
+                    'code' => [$message],
+                ],
+            ], 422);
+        }
+
+        return back()->withErrors([
+            'code' => $message,
+        ])->withInput($request->except('password', 'password_confirmation'));
+    }
+
+    public function verifyEmail(Request $request, $id, $token)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->email_verified_at) {
+            return redirect()->route('login')->with('success', 'Email Anda sudah terverifikasi. Silakan login.');
+        }
+
+        if (!$user->email_verification_token || !hash_equals($user->email_verification_token, (string) $token)) {
+            return redirect()->route('login')->with('error', 'Link verifikasi tidak valid atau sudah digunakan.');
+        }
+
+        if ($user->email_verification_sent_at && $user->email_verification_sent_at->lt(now()->subHours(24))) {
+            return redirect()->route('login')->with('error', 'Link verifikasi sudah kadaluarsa. Silakan daftar ulang atau minta link baru.');
+        }
+
+        $user->email_verified_at = now();
+        $user->email_verification_token = null;
+        $user->email_verification_sent_at = null;
+        $user->save();
+
+        // Opsional: login user setelah verifikasi
+        Auth::login($user);
+
+        return redirect('/')->with('success', 'Email Anda berhasil diverifikasi. Selamat datang!');
+    }
+
+    protected function sendEmailVerificationLink(User $user): void
+    {
+        $token = Str::random(64);
+
+        $user->email_verification_token = $token;
+        $user->email_verification_sent_at = now();
+        $user->save();
+
+        $verificationUrl = route('verification.verify', [
+            'id' => $user->id,
+            'token' => $token,
+        ]);
+
+        try {
+            $body = "Halo {$user->name},\n\n" .
+                "Terima kasih telah mendaftar di Selecta Wisata.\n" .
+                "Silakan klik link berikut untuk verifikasi email Anda:\n" .
+                "{$verificationUrl}\n\n" .
+                "Jika Anda tidak merasa membuat akun ini, abaikan email ini.";
+
+            Mail::raw($body, function ($message) use ($user) {
+                $message->to($user->email, $user->name)
+                    ->subject('Verifikasi Email Akun - Selecta Wisata');
+            });
+        } catch (\Exception $e) {
+            Log::error('Failed to send email verification link', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
