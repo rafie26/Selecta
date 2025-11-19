@@ -215,6 +215,14 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::post('/hotel-photos/{id}/toggle-featured', [AdminController::class, 'togglePhotoFeatured'])->name('hotel-photos.toggle-featured');
     Route::post('/hotel-photos/{id}/toggle-status', [AdminController::class, 'togglePhotoStatus'])->name('hotel-photos.toggle-status');
     Route::post('/hotel-photos/update-order', [AdminController::class, 'updatePhotosOrder'])->name('hotel-photos.update-order');
+
+    // Top Gallery CRUD routes
+    Route::get('/top-gallery', [AdminController::class, 'topGallery'])->name('top-gallery');
+    Route::get('/top-gallery/{id}', [AdminController::class, 'getGallery'])->name('top-gallery.get');
+    Route::post('/top-gallery', [AdminController::class, 'storeGallery'])->name('top-gallery.store');
+    Route::put('/top-gallery/{id}', [AdminController::class, 'updateGallery'])->name('top-gallery.update');
+    Route::delete('/top-gallery/{id}', [AdminController::class, 'deleteGallery'])->name('top-gallery.delete');
+    Route::post('/top-gallery/{id}/toggle-status', [AdminController::class, 'toggleGalleryStatus'])->name('top-gallery.toggle-status');
 });
 
 /*

@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\RoomBooking;
 use App\Models\RoomType;
 use App\Models\HotelPhoto;
+use App\Models\Gallery;
 use App\Models\Restaurant;
 use App\Models\MenuItem;
 use App\Models\TopAttraction;
@@ -1662,6 +1663,256 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mengubah status package.'
+            ], 500);
+        }
+    }
+
+    // ============ TOP GALLERY CRUD METHODS ============
+
+    public function topGallery()
+    {
+        $galleries = Gallery::orderBy('sort_order')
+            ->orderByDesc('photo_date')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('admin.top-gallery', compact('galleries'));
+    }
+
+    public function getGallery($id)
+    {
+        try {
+            $gallery = Gallery::findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $gallery->id,
+                    'title' => $gallery->title,
+                    'image_url' => $gallery->image_url,
+                    'photo_date' => $gallery->photo_date ? $gallery->photo_date->format('Y-m-d') : null,
+                    'sort_order' => $gallery->sort_order,
+                    'is_active' => (bool) $gallery->is_active,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto galeri tidak ditemukan.',
+            ], 404);
+        }
+    }
+
+    public function storeGallery(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'photo_date' => 'required|date',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|in:0,1,true,false,on',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $image = $request->file('image');
+            $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+
+            $storagePath = storage_path('app/public/galleries');
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+            }
+
+            $path = $image->storeAs('galleries', $filename, 'public');
+
+            $galleryData = [
+                'title' => $request->title,
+                'image_path' => $path,
+                'photo_date' => $request->photo_date,
+                'sort_order' => $request->sort_order ?? 0,
+                'is_active' => $request->boolean('is_active', true),
+            ];
+
+            $gallery = Gallery::create($galleryData);
+
+            DB::commit();
+
+            Log::info('Gallery photo created', [
+                'gallery_id' => $gallery->id,
+                'title' => $gallery->title,
+                'uploaded_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto galeri berhasil ditambahkan.',
+                'data' => $gallery,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to store gallery photo', [
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menambahkan foto galeri.',
+            ], 500);
+        }
+    }
+
+    public function updateGallery(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'photo_date' => 'required|date',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|in:0,1,true,false,on',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $gallery = Gallery::findOrFail($id);
+
+            DB::beginTransaction();
+
+            $updateData = [
+                'title' => $request->title,
+                'photo_date' => $request->photo_date,
+                'sort_order' => $request->sort_order ?? $gallery->sort_order,
+                'is_active' => $request->boolean('is_active', $gallery->is_active),
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($gallery->image_path && Storage::disk('public')->exists($gallery->image_path)) {
+                    Storage::disk('public')->delete($gallery->image_path);
+                }
+
+                $image = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('galleries', $filename, 'public');
+                $updateData['image_path'] = $path;
+            }
+
+            $gallery->update($updateData);
+
+            DB::commit();
+
+            Log::info('Gallery photo updated', [
+                'gallery_id' => $gallery->id,
+                'updated_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto galeri berhasil diperbarui.',
+                'data' => $gallery->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to update gallery photo', [
+                'gallery_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui foto galeri.',
+            ], 500);
+        }
+    }
+
+    public function deleteGallery($id)
+    {
+        try {
+            $gallery = Gallery::findOrFail($id);
+
+            DB::beginTransaction();
+
+            if ($gallery->image_path && Storage::disk('public')->exists($gallery->image_path)) {
+                Storage::disk('public')->delete($gallery->image_path);
+            }
+
+            $title = $gallery->title;
+            $gallery->delete();
+
+            DB::commit();
+
+            Log::info('Gallery photo deleted', [
+                'gallery_id' => $id,
+                'title' => $title,
+                'deleted_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto galeri berhasil dihapus.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to delete gallery photo', [
+                'gallery_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus foto galeri.',
+            ], 500);
+        }
+    }
+
+    public function toggleGalleryStatus($id)
+    {
+        try {
+            $gallery = Gallery::findOrFail($id);
+            $gallery->is_active = !$gallery->is_active;
+            $gallery->save();
+
+            Log::info('Gallery photo status toggled', [
+                'gallery_id' => $gallery->id,
+                'new_status' => $gallery->is_active ? 'active' : 'inactive',
+                'updated_by' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status foto galeri berhasil diubah.',
+                'is_active' => $gallery->is_active,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to toggle gallery status', [
+                'gallery_id' => $id,
+                'error' => $e->getMessage(),
+                'user' => Auth::user()->email ?? 'unknown',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengubah status foto galeri.',
             ], 500);
         }
     }

@@ -602,6 +602,15 @@
     </div>
 
     <script>
+        const dbPhotos = {!! $photos->map(function ($photo) {
+            return [
+                'src' => $photo->image_url,
+                'type' => 'normal',
+                'date' => $photo->photo_date ? $photo->photo_date->format('Y-m-d') : null,
+                'displayDate' => $photo->photo_date ? $photo->photo_date->format('d M Y') : null,
+            ];
+        })->values()->toJson() !!};
+
         const originalGalleryData = [
             // Page 1
             [
@@ -650,14 +659,27 @@
             ]
         ];
 
+        function buildPagedDataFromDb(photos) {
+            const perPage = 12;
+            const pages = [];
+            for (let i = 0; i < photos.length; i += perPage) {
+                pages.push(photos.slice(i, i + perPage));
+            }
+            return pages;
+        }
+
+        const baseGalleryData = (Array.isArray(dbPhotos) && dbPhotos.length > 0)
+            ? buildPagedDataFromDb(dbPhotos)
+            : originalGalleryData;
+
         let currentPage = 1;
-        let totalPages = originalGalleryData.length;
+        let totalPages = baseGalleryData.length;
         let currentImageIndex = 0;
         let currentPageImages = [];
         let currentSortedData = [];
 
         function deepCopyGalleryData() {
-            return originalGalleryData.map(page => 
+            return baseGalleryData.map(page => 
                 page.map(item => ({ ...item }))
             );
         }

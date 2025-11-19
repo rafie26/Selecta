@@ -86,6 +86,10 @@
                             <i class="fas fa-utensils me-2"></i>
                             Restaurants
                         </a>
+                        <a class="nav-link {{ request()->routeIs('admin.top-gallery') ? 'active' : '' }}" href="{{ route('admin.top-gallery') }}">
+                            <i class="fas fa-images me-2"></i>
+                            Galeri
+                        </a>
                         <hr class="border-light border-opacity-25">
                         <a class="nav-link" href="{{ url('/') }}" target="_blank">
                             <i class="fas fa-external-link-alt me-2"></i>
