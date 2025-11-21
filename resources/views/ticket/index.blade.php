@@ -1606,20 +1606,33 @@
                 <div class="gallery-header">
                     <div>
                         <h3 class="gallery-title">Foto-foto</h3>
-                        <div class="gallery-count">36+ foto tersedia</div>
+                        <div class="gallery-count">
+                            {{ $galleryPhotos->count() }}+ foto tersedia
+                        </div>
                     </div>
-                 <a href="{{ route('gallery.index') }}">Lihat Semua</a>
+                    <a href="{{ route('gallery.index') }}">Lihat Semua</a>
                 </div>
                 <div class="gallery-grid">
-                    <div class="gallery-item" onclick="openGallery(0)">
-                        <img src="/images/galeri1.jpeg" alt="Taman Selecta" id="galleryImg1">
-                    </div>
-                    <div class="gallery-item" onclick="openGallery(1)">
-                        <img src="/images/galeri2.jpeg" alt="Kolam Renang" id="galleryImg2">
-                    </div>
-                    <div class="gallery-item" onclick="openGallery(2)">
-                        <img src="/images/galeri3.jpeg" alt="Wahana Permainan" id="galleryImg3">
-                    </div>
+                    @php
+                        $ticketGalleryPhotos = $galleryPhotos->take(3);
+                    @endphp
+                    @if($ticketGalleryPhotos->isNotEmpty())
+                        @foreach($ticketGalleryPhotos as $index => $photo)
+                            <div class="gallery-item" onclick="openGallery({{ $index }})">
+                                <img src="{{ $photo->image_url }}" alt="{{ $photo->title ?? 'Foto Galeri ' . ($index + 1) }}" id="galleryImg{{ $index + 1 }}">
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="gallery-item" onclick="openGallery(0)">
+                            <img src="/images/galeri1.jpeg" alt="Taman Selecta" id="galleryImg1">
+                        </div>
+                        <div class="gallery-item" onclick="openGallery(1)">
+                            <img src="/images/galeri2.jpeg" alt="Kolam Renang" id="galleryImg2">
+                        </div>
+                        <div class="gallery-item" onclick="openGallery(2)">
+                            <img src="/images/galeri3.jpeg" alt="Wahana Permainan" id="galleryImg3">
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1870,6 +1883,14 @@
         <script type="application/json" id="user-review-data">
             {!! json_encode($userReview) !!}
         </script>
+        <script type="application/json" id="gallery-photos-data">
+            {!! $galleryPhotos->map(function ($photo) {
+                return [
+                    'src' => $photo->image_url,
+                    'alt' => $photo->title ?? 'Foto Galeri',
+                ];
+            })->values()->toJson() !!}
+        </script>
     </div>
 
     <script>
@@ -1878,8 +1899,8 @@
         let isEditMode = false;
         let currentReviewId = null;
         
-        // Gallery images data - using images from gallery page
-        const galleryImages = [
+        // Gallery images data - default static fallback
+        let galleryImages = [
             { src: '/images/galeri1.jpeg', alt: 'Taman Selecta - Pemandangan Utama' },
             { src: '/images/galeri2.jpeg', alt: 'Kolam Renang Selecta' },
             { src: '/images/galeri3.jpeg', alt: 'Wahana Permainan' },
@@ -2173,6 +2194,7 @@
                 const packageMappingElement = document.getElementById('package-mapping-data');
                 const ticketDataElement = document.getElementById('ticket-data');
                 const userReviewElement = document.getElementById('user-review-data');
+                const galleryPhotosElement = document.getElementById('gallery-photos-data');
                 
                 if (packageMappingElement) {
                     window.packageMappingData = JSON.parse(packageMappingElement.textContent);
@@ -2186,10 +2208,18 @@
                     currentUserReview = JSON.parse(userReviewElement.textContent);
                 }
                 
+                if (galleryPhotosElement) {
+                    const photos = JSON.parse(galleryPhotosElement.textContent);
+                    if (Array.isArray(photos) && photos.length > 0) {
+                        galleryImages = photos;
+                    }
+                }
+                
                 console.log('Server data loaded:', {
                     packageMapping: window.packageMappingData,
                     ticketData: window.ticketDataFromServer,
-                    userReview: currentUserReview
+                    userReview: currentUserReview,
+                    galleryImages: galleryImages
                 });
             } catch (error) {
                 console.error('Error loading server data:', error);
@@ -2197,6 +2227,7 @@
                 window.packageMappingData = { reguler: 1, terusan: 2 };
                 window.ticketDataFromServer = {};
                 currentUserReview = null;
+                galleryImages = galleryImages;
             }
         }
         

@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\BookingDetail;
 use App\Models\Visitor;
 use App\Models\Review;
+use App\Models\Gallery;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -42,20 +43,28 @@ class TicketController extends Controller
             // Get reviews for display
             $reviews = Review::with('user')->active()->latest()->take(10)->get();
             
+            // Get gallery photos for ticket page (same source as gallery page)
+            $galleryPhotos = Gallery::where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderByDesc('photo_date')
+                ->orderByDesc('created_at')
+                ->get();
+            
             // Check if current user has already reviewed
             $userReview = null;
             if (Auth::check()) {
                 $userReview = Review::where('user_id', Auth::id())->first();
             }
             
-            return view('ticket.index', compact('packages', 'packageMapping', 'reviews', 'userReview'));
+            return view('ticket.index', compact('packages', 'packageMapping', 'reviews', 'userReview', 'galleryPhotos'));
         } catch (\Exception $e) {
             // If table doesn't exist, return empty collection
             $packages = collect([]);
             $packageMapping = ['reguler' => 1, 'terusan' => 2];
             $reviews = collect([]);
             $userReview = null;
-            return view('ticket.index', compact('packages', 'packageMapping', 'reviews', 'userReview'));
+            $galleryPhotos = collect([]);
+            return view('ticket.index', compact('packages', 'packageMapping', 'reviews', 'userReview', 'galleryPhotos'));
         }
     }
 

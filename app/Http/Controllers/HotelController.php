@@ -131,12 +131,13 @@ class HotelController extends Controller
                 $quantity = $roomData['quantity'];
                 $guestConfig = $roomData['guestConfig'];
                 
-                // Check availability
-                if ($roomType->available_rooms < $quantity) {
+                // Check availability berdasarkan booking yang sudah dibayar dan rentang tanggal yang dipilih
+                $availableForDates = $roomType->getAvailableRoomsCount($checkIn, $checkOut);
+                if ($availableForDates < $quantity) {
                     DB::rollback();
                     return response()->json([
                         'success' => false,
-                        'message' => "Maaf, hanya tersedia {$roomType->available_rooms} kamar {$roomType->name}."
+                        'message' => "Maaf, hanya tersedia {$availableForDates} kamar {$roomType->name} untuk tanggal yang dipilih."
                     ], 400);
                 }
 
@@ -147,15 +148,6 @@ class HotelController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => "Jumlah tamu melebihi kapasitas kamar {$roomType->name}."
-                    ], 400);
-                }
-
-                // Reserve rooms
-                if (!$roomType->reserveRooms($quantity)) {
-                    DB::rollback();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Maaf, kamar {$roomType->name} tidak tersedia."
                     ], 400);
                 }
 

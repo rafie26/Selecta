@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class RoomType extends Model
 {
@@ -57,8 +58,8 @@ class RoomType extends Model
      */
     public function isAvailable($checkIn, $checkOut, $numberOfRooms = 1)
     {
-        // Use the available_rooms column for real-time availability
-        return $this->available_rooms >= $numberOfRooms;
+        // Use dynamic calculation based on paid room bookings and date range
+        return $this->getAvailableRoomsCount($checkIn, $checkOut) >= $numberOfRooms;
     }
 
     /**
@@ -66,8 +67,40 @@ class RoomType extends Model
      */
     public function getAvailableRoomsCount($checkIn, $checkOut)
     {
-        // Use the available_rooms column for real-time availability
-        return $this->available_rooms;
+        // Normalize dates to Carbon instances
+        if (!$checkIn instanceof Carbon) {
+            $checkIn = Carbon::parse($checkIn);
+        }
+
+        if (!$checkOut instanceof Carbon) {
+            $checkOut = Carbon::parse($checkOut);
+        }
+
+        // Total physical rooms for this type
+        $totalRooms = $this->total_rooms ?? 0;
+
+        if ($totalRooms <= 0) {
+            return 0;
+        }
+
+        // Hitung jumlah kamar yang sudah terisi oleh booking hotel yang SUDAH DIBAYAR
+        // Rentang tanggal yang dianggap terisi adalah [check_in_date, check_out_date)
+        $bookedRooms = $this->roomBookings()
+            ->whereHas('booking', function ($query) {
+                $query->where('booking_type', 'hotel')
+                      ->where('payment_status', 'paid');
+            })
+            ->where(function ($query) use ($checkIn, $checkOut) {
+                // Interval overlap: booking.check_in_date < requested_check_out
+                // dan booking.check_out_date > requested_check_in
+                $query->where('check_in_date', '<', $checkOut->toDateString())
+                      ->where('check_out_date', '>', $checkIn->toDateString());
+            })
+            ->sum('number_of_rooms');
+
+        $available = $totalRooms - $bookedRooms;
+
+        return $available > 0 ? $available : 0;
     }
 
     /**
