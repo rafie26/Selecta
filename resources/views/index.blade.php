@@ -963,10 +963,16 @@ main {
 
         <div class="button-container">
             <div class="search-container">
-                <form class="search-form">
+                <form class="search-form" action="{{ route('search.index') }}" method="GET">
                     <div class="search-box">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" placeholder="Search" class="search-input">
+                        <input
+                            type="text"
+                            name="q"
+                            placeholder="Search"
+                            class="search-input"
+                            value="{{ request('q') }}"
+                        >
                     </div>
                 </form>
             </div>
@@ -1365,24 +1371,18 @@ function initSearchFunctionality() {
     const searchInput = document.querySelector('.search-input');
     const suggestionTags = document.querySelectorAll('.suggestion-tag');
     
-    // Handle search form submission
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const query = searchInput.value.trim();
-            if (query) {
-                handleSearch(query);
-            }
-        });
-    }
-    
-    // Handle suggestion tag clicks
+    // Form sekarang submit normal ke backend (route search.index)
+    // jadi tidak perlu e.preventDefault() di sini.
+
+    // Handle suggestion tag clicks (isi input lalu submit form)
     suggestionTags.forEach(tag => {
         tag.addEventListener('click', function() {
             const query = this.textContent;
             if (searchInput) {
                 searchInput.value = query;
-                handleSearch(query);
+                if (searchForm) {
+                    searchForm.submit();
+                }
             }
         });
     });
