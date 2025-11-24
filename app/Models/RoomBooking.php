@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 class RoomBooking extends Model
 {
@@ -53,13 +54,47 @@ class RoomBooking extends Model
      */
     public function checkIn()
     {
+        Log::info('RoomBooking checkIn started', [
+            'room_booking_id' => $this->id,
+            'booking_id' => $this->booking_id,
+            'room_type_id' => $this->room_type_id,
+            'number_of_rooms' => $this->number_of_rooms,
+            'current_available_rooms' => $this->roomType?->available_rooms
+        ]);
+
         $this->update([
             'room_status' => 'occupied',
             'actual_check_in' => now()
         ]);
-        
+
+        // Mark related rooms as occupied in inventory
+        if ($this->roomType) {
+            $reserved = $this->roomType->reserveRooms($this->number_of_rooms);
+
+            Log::info('RoomBooking checkIn - reserve rooms result', [
+                'room_booking_id' => $this->id,
+                'room_type_id' => $this->room_type_id,
+                'reserved' => $reserved,
+                'new_available_rooms' => $this->roomType->fresh()->available_rooms
+            ]);
+
+            if (!$reserved) {
+                Log::warning('Failed to reserve rooms - not enough available', [
+                    'room_booking_id' => $this->id,
+                    'room_type_id' => $this->room_type_id,
+                    'requested_rooms' => $this->number_of_rooms,
+                    'available_rooms' => $this->roomType->available_rooms
+                ]);
+            }
+        }
+
         // Update booking check-in status
         $this->booking->update(['check_in_status' => 'checked_in']);
+
+        Log::info('RoomBooking checkIn completed', [
+            'room_booking_id' => $this->id,
+            'booking_id' => $this->booking_id
+        ]);
     }
 
     /**

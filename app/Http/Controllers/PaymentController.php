@@ -7,6 +7,7 @@ use App\Models\Package;
 use App\Models\BookingDetail;
 use App\Models\Visitor;
 use App\Services\MidtransService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -292,6 +293,8 @@ class PaymentController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
         }
 
+        $previousStatus = $booking->payment_status;
+
         // Update booking based on transaction status
         if ($transactionStatus == 'capture') {
             if ($fraudStatus == 'challenge') {
@@ -332,6 +335,11 @@ class PaymentController extends Controller
         $booking->midtrans_transaction_id = $notification->transaction_id;
         $booking->midtrans_response = json_encode($notification->getResponse());
         $booking->save();
+
+        // Auto check-in for hotel bookings if check-in date is today or earlier
+        if ($booking->payment_status === 'paid' && $booking->booking_type === 'hotel') {
+            $this->autoCheckinIfEligible($booking);
+        }
 
         return response()->json(['status' => 'success']);
     }
@@ -425,7 +433,7 @@ class PaymentController extends Controller
 
     public function success($bookingId)
     {
-        $booking = Booking::with(['bookingDetails.package', 'visitors', 'user'])
+        $booking = Booking::with(['bookingDetails.package', 'visitors', 'user', 'roomBookings.roomType'])
                           ->where('id', $bookingId)
                           ->where('user_id', Auth::id())
                           ->first();
@@ -450,6 +458,11 @@ class PaymentController extends Controller
             }
             
             $this->generateBarcode($booking);
+
+            // Auto check-in for hotel bookings if check-in date is today or earlier
+            if ($booking->booking_type === 'hotel') {
+                $this->autoCheckinIfEligible($booking);
+            }
         }
 
         return view('payment.success', compact('booking'));
@@ -483,6 +496,128 @@ class PaymentController extends Controller
                 'booking_id' => $booking->id,
                 'booking_code' => $booking->booking_code,
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Reduce available rooms when payment is successful
+     */
+    private function reduceAvailableRooms($booking)
+    {
+        try {
+            $roomBookings = $booking->roomBookings;
+            
+            foreach ($roomBookings as $roomBooking) {
+                if ($roomBooking->roomType) {
+                    $reserved = $roomBooking->roomType->reserveRooms($roomBooking->number_of_rooms);
+                    
+                    Log::info('Rooms reduced after payment', [
+                        'booking_id' => $booking->id,
+                        'room_type_id' => $roomBooking->room_type_id,
+                        'number_of_rooms' => $roomBooking->number_of_rooms,
+                        'reserved' => $reserved,
+                        'available_rooms_after' => $roomBooking->roomType->fresh()->available_rooms
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to reduce available rooms', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Release reserved rooms when payment fails or is cancelled
+     */
+    private function releaseReservedRooms($booking)
+    {
+        try {
+            $roomBookings = $booking->roomBookings;
+            
+            foreach ($roomBookings as $roomBooking) {
+                if ($roomBooking->roomType) {
+                    $released = $roomBooking->roomType->releaseRooms($roomBooking->number_of_rooms);
+                    
+                    Log::info('Rooms released after payment failure', [
+                        'booking_id' => $booking->id,
+                        'room_type_id' => $roomBooking->room_type_id,
+                        'number_of_rooms' => $roomBooking->number_of_rooms,
+                        'released' => $released,
+                        'available_rooms_after' => $roomBooking->roomType->fresh()->available_rooms
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to release reserved rooms', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Auto check-in for hotel bookings if check-in date is today or earlier (Asia/Jakarta timezone)
+     */
+    private function autoCheckinIfEligible($booking)
+    {
+        try {
+            // Get today's date in Asia/Jakarta timezone
+            $todayJakarta = Carbon::today('Asia/Jakarta');
+
+            // Determine check-in date (use visit_date for hotel bookings)
+            $checkInDate = $booking->visit_date ?? $booking->check_in_date ?? null;
+
+            // Convert to date only (without time) for comparison
+            $checkInDateOnly = $checkInDate ? Carbon::parse($checkInDate)->toDateString() : null;
+
+            Log::info('Auto check-in eligibility check', [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'booking_type' => $booking->booking_type,
+                'check_in_date' => $checkInDateOnly,
+                'today_jakarta' => $todayJakarta->toDateString(),
+                'is_eligible' => $checkInDateOnly && $checkInDateOnly <= $todayJakarta->toDateString()
+            ]);
+
+            // Only auto check-in if check-in date is today or earlier (compare dates only, not time)
+            if ($checkInDateOnly && $checkInDateOnly <= $todayJakarta->toDateString()) {
+                // Reload room bookings to ensure fresh data
+                $roomBookings = $booking->roomBookings()->where('room_status', 'reserved')->get();
+
+                Log::info('Found reserved room bookings for auto check-in', [
+                    'booking_id' => $booking->id,
+                    'count' => $roomBookings->count()
+                ]);
+
+                foreach ($roomBookings as $roomBooking) {
+                    $roomBooking->checkIn();
+
+                    Log::info('Auto check-in after payment - SUCCESS', [
+                        'booking_id' => $booking->id,
+                        'booking_code' => $booking->booking_code,
+                        'room_booking_id' => $roomBooking->id,
+                        'room_type_id' => $roomBooking->room_type_id,
+                        'number_of_rooms' => $roomBooking->number_of_rooms,
+                        'check_in_date' => $roomBooking->check_in_date,
+                        'available_rooms_after' => $roomBooking->roomType->fresh()->available_rooms
+                    ]);
+                }
+            } else {
+                Log::info('Auto check-in skipped - check-in date is in the future', [
+                    'booking_id' => $booking->id,
+                    'check_in_date' => $checkInDate,
+                    'today_jakarta' => $todayJakarta->toDateString()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to auto check-in after payment', [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }

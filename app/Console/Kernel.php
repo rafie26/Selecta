@@ -12,8 +12,15 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Auto checkout rooms daily at 12:00 PM
-        $schedule->command('rooms:auto-checkout')->dailyAt('12:00');
+        // Auto checkout rooms periodically for occupied bookings on their checkout date (Asia/Jakarta)
+        $schedule->command('rooms:auto-checkout')
+            ->everyFiveMinutes()
+            ->timezone('Asia/Jakarta');
+
+        // Auto check-in rooms periodically for paid bookings on their check-in date (Asia/Jakarta)
+        $schedule->command('rooms:auto-checkin')
+            ->everyFiveMinutes()
+            ->timezone('Asia/Jakarta');
     }
 
     /**

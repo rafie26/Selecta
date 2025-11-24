@@ -274,45 +274,76 @@
             </form>
         </div>
     </div>
-</div>
+ </div>
 
-<script>
-let currentBookingId = null;
+ <script src="{{ config('midtrans.snap_url') }}" data-client-key="{{ config('midtrans.client_key') }}"></script>
+ <script>
+ let currentBookingId = null;
 
-function payBooking(bookingId, bookingType) {
-    // Redirect to payment with booking info
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/payment';
-    
-    // Add CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '_token';
-    csrfInput.value = csrfToken;
-    form.appendChild(csrfInput);
-    
-    // Add booking ID
-    const bookingIdInput = document.createElement('input');
-    bookingIdInput.type = 'hidden';
-    bookingIdInput.name = 'booking_id';
-    bookingIdInput.value = bookingId;
-    form.appendChild(bookingIdInput);
-    
-    // Add booking type
-    const bookingTypeInput = document.createElement('input');
-    bookingTypeInput.type = 'hidden';
-    bookingTypeInput.name = 'booking_type';
-    bookingTypeInput.value = bookingType;
-    form.appendChild(bookingTypeInput);
-    
-    document.body.appendChild(form);
-    form.submit();
-}
+ function payBooking(bookingId, bookingType) {
+     // Fallback booking type for legacy data
+     if (!bookingType) {
+         bookingType = 'ticket';
+     }
+
+     if (typeof window.snap === 'undefined') {
+         alert('Layanan pembayaran tidak tersedia saat ini. Silakan coba beberapa saat lagi.');
+         return;
+     }
+
+     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+     fetch('/payment', {
+         method: 'POST',
+         headers: {
+             'Content-Type': 'application/json',
+             'X-CSRF-TOKEN': csrfToken,
+             'Accept': 'application/json'
+         },
+         body: JSON.stringify({
+             booking_id: bookingId,
+             booking_type: bookingType
+         })
+     })
+     .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, data })))
+     .then(({ ok, data }) => {
+         if (!ok) {
+             const message = data && data.message ? data.message : 'Terjadi kesalahan saat memproses pembayaran.';
+             alert(message);
+             return;
+         }
+
+         if (!data.snap_token) {
+             alert('Token pembayaran tidak ditemukan. Silakan coba lagi.');
+             return;
+         }
+
+         window.snap.pay(data.snap_token, {
+             onSuccess: function () {
+                 alert('Pembayaran berhasil!');
+                 setTimeout(function () {
+                     window.location.href = `/payment/success/${bookingId}`;
+                 }, 1000);
+             },
+             onPending: function () {
+                 alert('Pembayaran masih pending. Silakan selesaikan pembayaran Anda.');
+             },
+             onError: function () {
+                 alert('Pembayaran gagal. Silakan coba lagi.');
+             },
+             onClose: function () {
+                 alert('Anda menutup jendela pembayaran sebelum menyelesaikan transaksi.');
+             }
+         });
+     })
+     .catch(error => {
+         console.error('Payment error:', error);
+         alert('Terjadi kesalahan saat memproses pembayaran.');
+     });
+ }
 
 
-function setCheckInTime(bookingId) {
+ function setCheckInTime(bookingId) {
     currentBookingId = bookingId;
     document.getElementById('checkInModal').classList.remove('hidden');
     // Set current time as default

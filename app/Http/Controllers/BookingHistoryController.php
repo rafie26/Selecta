@@ -53,15 +53,34 @@ class BookingHistoryController extends Controller
             'check_in_time' => 'required|date_format:H:i'
         ]);
 
-        $booking = Booking::where('user_id', Auth::id())
+        $booking = Booking::with(['roomBookings.roomType'])
+            ->where('user_id', Auth::id())
             ->where('payment_status', 'paid')
             ->findOrFail($id);
 
-        $booking->update([
-            'check_in_time' => $request->check_in_time,
-            'check_in_status' => 'checked_in',
-            'checked_in_at' => now()
-        ]);
+        $wasAlreadyCheckedIn = $booking->check_in_status === 'checked_in';
+
+        // Jika ini booking hotel dan punya room bookings, sinkronkan dengan inventory kamar
+        if ($booking->booking_type === 'hotel' && $booking->roomBookings->count() > 0 && !$wasAlreadyCheckedIn) {
+            foreach ($booking->roomBookings as $roomBooking) {
+                // checkIn() akan set room_status, kurangi available_rooms,
+                // dan mengubah check_in_status booking menjadi 'checked_in'
+                $roomBooking->checkIn();
+            }
+
+            // Simpan juga informasi waktu check-in yang diinput user
+            $booking->update([
+                'check_in_time' => $request->check_in_time,
+                'checked_in_at' => $booking->checked_in_at ?? now(),
+            ]);
+        } else {
+            // Booking non-hotel atau tanpa roomBookings: tetap hanya mencatat waktu check-in
+            $booking->update([
+                'check_in_time' => $request->check_in_time,
+                'check_in_status' => 'checked_in',
+                'checked_in_at' => now()
+            ]);
+        }
 
         return response()->json([
             'success' => true,

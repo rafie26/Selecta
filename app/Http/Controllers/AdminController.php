@@ -254,6 +254,23 @@ class AdminController extends Controller
         $totalRoomBookings = RoomBooking::count();
         $todayRoomBookings = RoomBooking::whereDate('check_in_date', today())->count();
         
+        // Get Top Attractions statistics
+        $totalAttractions = TopAttraction::count();
+        $activeAttractions = TopAttraction::where('is_active', true)->count();
+        
+        // Get Gallery statistics
+        $totalGalleryPhotos = Gallery::count();
+        $activeGalleryPhotos = Gallery::where('is_active', true)->count();
+        
+        // Get booking revenue statistics
+        $totalRevenue = Booking::where('payment_status', 'paid')->sum('total_amount');
+        $paidBookings = Booking::where('payment_status', 'paid')->count();
+        $pendingBookings = Booking::where('payment_status', 'pending')->count();
+        $totalBookings = Booking::count();
+        
+        // Calculate occupancy rate
+        $occupancyRate = $totalRooms > 0 ? round((($totalRooms - $totalAvailableRooms) / $totalRooms) * 100) : 0;
+        
         return view('admin.dashboard', compact(
             'totalUsers',
             'totalRoomTypes',
@@ -264,7 +281,16 @@ class AdminController extends Controller
             'totalAvailableRooms',
             'totalRooms',
             'occupiedRooms',
-            'roomTypesAvailability'
+            'roomTypesAvailability',
+            'totalAttractions',
+            'activeAttractions',
+            'totalGalleryPhotos',
+            'activeGalleryPhotos',
+            'totalRevenue',
+            'paidBookings',
+            'pendingBookings',
+            'totalBookings',
+            'occupancyRate'
         ))->with('totalHotels', $totalRoomTypes);
     }
 

@@ -79,7 +79,7 @@
                             Users
                         </a>
                         <a class="nav-link {{ request()->routeIs('admin.top-attractions') ? 'active' : '' }}" href="{{ route('admin.top-attractions') }}">
-                            <i class="fas fa-mountain-sun me-2"></i>
+                            <i class="fas fa-star me-2"></i>
                             Top Wahana
                         </a>
                         <a class="nav-link {{ request()->routeIs('admin.restaurants') ? 'active' : '' }}" href="{{ route('admin.restaurants') }}">

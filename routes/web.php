@@ -271,6 +271,9 @@ Route::prefix('petugas-hotel')->middleware(['auth', 'role:petugas_hotel'])->name
     Route::post('/hotel-photos/{id}/toggle-featured', [PetugasHotelController::class, 'togglePhotoFeatured'])->name('hotel-photos.toggle-featured');
     Route::post('/hotel-photos/{id}/toggle-status', [PetugasHotelController::class, 'togglePhotoStatus'])->name('hotel-photos.toggle-status');
     Route::get('/hotel-bookings', [PetugasHotelController::class, 'hotelBookings'])->name('hotel-bookings');
+    Route::get('/hotel-bookings/{id}/detail', [PetugasHotelController::class, 'hotelBookingDetail'])->name('hotel-bookings.detail');
+    Route::post('/hotel-bookings/{id}/update-status', [PetugasHotelController::class, 'updateHotelBookingStatus'])->name('hotel-bookings.update-status');
+    Route::delete('/hotel-bookings/{id}', [PetugasHotelController::class, 'deleteHotelBooking'])->name('hotel-bookings.delete');
     Route::get('/qr-scanner', [PetugasHotelController::class, 'qrScanner'])->name('qr-scanner');
 });
 

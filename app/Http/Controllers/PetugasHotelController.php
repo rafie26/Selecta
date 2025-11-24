@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class PetugasHotelController extends Controller
 {
@@ -27,11 +29,15 @@ class PetugasHotelController extends Controller
             ->where('payment_status', 'paid')
             ->count();
 
+        // Room type list for occupancy status on dashboard
+        $roomTypes = RoomType::orderBy('name')->get();
+
         return view('petugas-hotel.dashboard', compact(
             'totalRoomTypes',
             'totalBookings',
             'pendingBookings',
-            'paidBookings'
+            'paidBookings',
+            'roomTypes'
         ));
     }
 
@@ -40,8 +46,9 @@ class PetugasHotelController extends Controller
      */
     public function hotelBookings(Request $request)
     {
-        $query = Booking::with(['user'])
-            ->where('booking_type', 'hotel');
+        $query = Booking::with(['user', 'roomBookings.roomType'])
+            ->where('booking_type', 'hotel')
+            ->whereHas('roomBookings');
 
         // Filter by payment status
         if ($request->has('payment_status') && $request->payment_status != '') {
@@ -70,6 +77,157 @@ class PetugasHotelController extends Controller
         $bookings = $query->latest()->paginate(15);
 
         return view('petugas-hotel.hotel-bookings', compact('bookings'));
+    }
+
+    /**
+     * Get detail for a single hotel booking (for modal)
+     */
+    public function hotelBookingDetail($id)
+    {
+        try {
+            $booking = Booking::with(['user', 'visitors', 'bookingDetails.package', 'roomBookings.roomType'])
+                ->where('booking_type', 'hotel')
+                ->findOrFail($id);
+
+            $html = view('admin.partials.booking-detail', compact('booking'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking tidak ditemukan.'
+            ], 404);
+        }
+    }
+
+    /**
+     * Update hotel booking payment/check-in status
+     */
+    public function updateHotelBookingStatus(Request $request, $id)
+    {
+        $request->validate([
+            'payment_status' => 'required|in:pending,paid,failed,expired',
+            'check_in_status' => 'required|in:pending,checked_in',
+        ]);
+
+        $booking = Booking::with('roomBookings')
+            ->where('booking_type', 'hotel')
+            ->findOrFail($id);
+
+        $oldCheckInStatus = $booking->check_in_status;
+
+        $booking->update([
+            'payment_status' => $request->payment_status,
+            'check_in_status' => $request->check_in_status,
+        ]);
+
+        // Generate QR code if payment is paid and QR doesn't exist
+        if ($request->payment_status === 'paid' && !$booking->qr_code) {
+            $booking->update(['qr_code' => $booking->generateQRCode()]);
+        }
+
+        // Handle room booking status changes
+        if ($booking->roomBookings->count() > 0) {
+            foreach ($booking->roomBookings as $roomBooking) {
+                // If check-in status changed to checked_in, update room booking
+                if ($oldCheckInStatus !== 'checked_in' && $request->check_in_status === 'checked_in') {
+                    $roomBooking->checkIn();
+                }
+
+                // If check-in status changed from checked_in to pending (checkout), release rooms
+                if ($oldCheckInStatus === 'checked_in' && $request->check_in_status === 'pending') {
+                    $roomBooking->checkOut();
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status booking berhasil diupdate.'
+        ]);
+    }
+
+    /**
+     * Delete hotel booking and release rooms
+     */
+    public function deleteHotelBooking($id)
+    {
+        try {
+            $booking = Booking::with(['bookingDetails', 'visitors', 'roomBookings.roomType'])
+                ->where('booking_type', 'hotel')
+                ->findOrFail($id);
+
+            // Log the deletion attempt
+            Log::info('Hotel booking deletion attempt by Petugas Hotel', [
+                'booking_id' => $id,
+                'booking_code' => $booking->booking_code,
+                'booker_name' => $booking->booker_name,
+                'deleted_by' => Auth::user()->email ?? 'petugas_hotel',
+            ]);
+
+            DB::beginTransaction();
+
+            // Release rooms if this is a hotel booking
+            if ($booking->roomBookings->count() > 0) {
+                foreach ($booking->roomBookings as $roomBooking) {
+                    $roomType = $roomBooking->roomType;
+
+                    if ($roomType) {
+                        $numberOfRooms = $roomBooking->number_of_rooms;
+
+                        // Release the rooms back to available inventory
+                        $roomType->increment('available_rooms', $numberOfRooms);
+
+                        Log::info('Rooms released after hotel booking deletion (Petugas Hotel)', [
+                            'booking_id' => $id,
+                            'room_type_id' => $roomType->id,
+                            'room_type_name' => $roomType->name,
+                            'rooms_released' => $numberOfRooms,
+                            'new_available_rooms' => $roomType->fresh()->available_rooms,
+                            'total_rooms' => $roomType->total_rooms,
+                        ]);
+                    }
+                }
+
+                // Delete room bookings
+                $booking->roomBookings()->delete();
+            }
+
+            // Delete related data (cascade delete)
+            $booking->bookingDetails()->delete();
+            $booking->visitors()->delete();
+
+            // Delete the booking
+            $booking->delete();
+
+            DB::commit();
+
+            Log::info('Hotel booking deleted successfully by Petugas Hotel', [
+                'booking_id' => $id,
+                'booking_code' => $booking->booking_code,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking berhasil dihapus dan kamar telah dikembalikan ke inventory!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to delete hotel booking (Petugas Hotel)', [
+                'booking_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus booking.'
+            ], 500);
+        }
     }
 
     /**

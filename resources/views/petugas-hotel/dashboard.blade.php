@@ -105,6 +105,75 @@
     </div>
 </div>
 
+<!-- Room Status -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-bed me-2 text-danger"></i>
+                    Status Kamar Saat Ini
+                </h5>
+
+                @if(isset($roomTypes) && $roomTypes->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tipe Kamar</th>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-center">Terisi</th>
+                                    <th class="text-center">Tersedia</th>
+                                    <th class="text-center">Occupancy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($roomTypes as $roomType)
+                                    @php
+                                        $totalRooms = $roomType->total_rooms ?? 0;
+                                        $availableRooms = $roomType->available_rooms ?? 0;
+                                        $occupiedRooms = max($totalRooms - $availableRooms, 0);
+                                        $occupancyRate = $totalRooms > 0 ? round(($occupiedRooms / $totalRooms) * 100) : 0;
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <strong>{{ $roomType->name }}</strong>
+                                            @if(!$roomType->is_active)
+                                                <span class="badge bg-secondary ms-2">Nonaktif</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">{{ $totalRooms }}</td>
+                                        <td class="text-center text-danger fw-semibold">{{ $occupiedRooms }}</td>
+                                        <td class="text-center text-success fw-semibold">{{ $availableRooms }}</td>
+                                        <td class="text-center" style="min-width: 160px;">
+                                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 6px;">
+                                                    <div class="progress-bar bg-danger" role="progressbar"
+                                                         style="width: {{ $occupancyRate }}%;"
+                                                         aria-valuenow="{{ $occupancyRate }}" aria-valuemin="0" aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted" style="width: 42px;">
+                                                    {{ $occupancyRate }}%
+                                                </small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-bed fa-2x mb-2 opacity-25"></i>
+                        <p class="mb-0">Belum ada data tipe kamar hotel.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Bookings -->
 <div class="row mt-4">
     <div class="col-12">
