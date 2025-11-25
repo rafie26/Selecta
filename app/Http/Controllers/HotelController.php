@@ -127,17 +127,17 @@ class HotelController extends Controller
 
             // Validate and calculate total for each room
             foreach ($request->rooms as $roomData) {
-                $roomType = RoomType::findOrFail($roomData['roomId']);
+                $roomType = RoomType::lockForUpdate()->findOrFail($roomData['roomId']);
                 $quantity = $roomData['quantity'];
                 $guestConfig = $roomData['guestConfig'];
                 
-                // Check availability berdasarkan booking yang sudah dibayar dan rentang tanggal yang dipilih
+                // Check availability dengan lock untuk mencegah race condition
                 $availableForDates = $roomType->getAvailableRoomsCount($checkIn, $checkOut);
                 if ($availableForDates < $quantity) {
                     DB::rollback();
                     return response()->json([
                         'success' => false,
-                        'message' => "Maaf, hanya tersedia {$availableForDates} kamar {$roomType->name} untuk tanggal yang dipilih."
+                        'message' => "Maaf, hanya tersedia {$availableForDates} kamar {$roomType->name} untuk tanggal yang dipilih. Silakan pilih tanggal lain atau jumlah kamar yang lebih sedikit."
                     ], 400);
                 }
 
@@ -147,7 +147,7 @@ class HotelController extends Controller
                     DB::rollback();
                     return response()->json([
                         'success' => false,
-                        'message' => "Jumlah tamu melebihi kapasitas kamar {$roomType->name}."
+                        'message' => "Jumlah tamu melebihi kapasitas kamar {$roomType->name}. Kapasitas maksimal: {$roomType->max_occupancy} orang."
                     ], 400);
                 }
 
@@ -219,6 +219,14 @@ class HotelController extends Controller
 
             DB::commit();
 
+            Log::info('Hotel booking created successfully', [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'user_id' => Auth::id()
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Pemesanan berhasil dibuat!',
@@ -239,10 +247,13 @@ class HotelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Hotel booking error: ' . $e->getMessage());
+            Log::error('Hotel booking error: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memproses pemesanan.'
+                'message' => 'Terjadi kesalahan saat memproses pemesanan. Silakan coba lagi.'
             ], 500);
         }
     }
@@ -312,5 +323,143 @@ class HotelController extends Controller
         ];
 
         return $rates;
+    }
+
+    /**
+     * Get unavailable dates for a specific room type
+     * Menampilkan tanggal-tanggal yang tidak tersedia untuk kamar tertentu
+     */
+    public function getUnavailableDates(Request $request)
+    {
+        $request->validate([
+            'room_id' => 'required|exists:room_types,id',
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2024'
+        ]);
+
+        $roomType = RoomType::findOrFail($request->room_id);
+        $month = $request->month;
+        $year = $request->year;
+
+        // Get all bookings for this room type in the specified month
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+        $endDate = $startDate->copy()->endOfMonth();
+
+        $bookings = RoomBooking::where('room_type_id', $roomType->id)
+            ->whereHas('booking', function ($query) {
+                $query->where('booking_type', 'hotel')
+                      ->where('payment_status', 'paid');
+            })
+            ->where(function ($query) use ($startDate, $endDate) {
+                $query->where('check_in_date', '<=', $endDate->toDateString())
+                      ->where('check_out_date', '>=', $startDate->toDateString());
+            })
+            ->get();
+
+        $unavailableDates = [];
+        
+        foreach ($bookings as $booking) {
+            $current = $booking->check_in_date->copy();
+            $checkOut = $booking->check_out_date->copy();
+
+            // Mark all dates from check-in to check-out (exclusive) as unavailable
+            while ($current < $checkOut) {
+                if ($current->month == $month && $current->year == $year) {
+                    $unavailableDates[] = $current->day;
+                }
+                $current->addDay();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'room_id' => $roomType->id,
+            'room_name' => $roomType->name,
+            'month' => $month,
+            'year' => $year,
+            'unavailable_dates' => array_unique($unavailableDates),
+            'total_rooms' => $roomType->total_rooms
+        ]);
+    }
+
+    /**
+     * Get real-time availability for a room type across multiple dates
+     * Digunakan untuk menampilkan status ketersediaan kamar secara real-time
+     */
+    public function getRoomAvailability(Request $request)
+    {
+        $request->validate([
+            'room_id' => 'required|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in'
+        ]);
+
+        $roomType = RoomType::findOrFail($request->room_id);
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+
+        // Get available rooms count
+        $availableRooms = $roomType->getAvailableRoomsCount($checkIn, $checkOut);
+        $isAvailable = $availableRooms > 0;
+
+        // Get booking details that overlap with requested dates
+        $conflictingBookings = RoomBooking::where('room_type_id', $roomType->id)
+            ->whereHas('booking', function ($query) {
+                $query->where('booking_type', 'hotel')
+                      ->where('payment_status', 'paid');
+            })
+            ->where(function ($query) use ($checkIn, $checkOut) {
+                $query->whereDate('check_in_date', '<', $checkOut->toDateString())
+                      ->whereDate('check_out_date', '>', $checkIn->toDateString());
+            })
+            ->with('booking')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'room_id' => $roomType->id,
+            'room_name' => $roomType->name,
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkOut->toDateString(),
+            'total_rooms' => $roomType->total_rooms,
+            'available_rooms' => $availableRooms,
+            'is_available' => $isAvailable,
+            'conflicting_bookings_count' => $conflictingBookings->count(),
+            'message' => $isAvailable 
+                ? "Tersedia {$availableRooms} kamar untuk tanggal yang dipilih"
+                : "Maaf, tidak ada kamar yang tersedia untuk tanggal yang dipilih"
+        ]);
+    }
+
+    /**
+     * Check if specific dates have available rooms
+     * Validasi cepat untuk check ketersediaan
+     */
+    public function validateAvailability(Request $request)
+    {
+        $request->validate([
+            'room_id' => 'required|exists:room_types,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        $roomType = RoomType::findOrFail($request->room_id);
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $quantity = $request->quantity;
+
+        $availableRooms = $roomType->getAvailableRoomsCount($checkIn, $checkOut);
+        $isAvailable = $availableRooms >= $quantity;
+
+        return response()->json([
+            'success' => true,
+            'is_available' => $isAvailable,
+            'available_rooms' => $availableRooms,
+            'requested_quantity' => $quantity,
+            'message' => $isAvailable 
+                ? "Tersedia {$availableRooms} kamar"
+                : "Hanya tersedia {$availableRooms} kamar, Anda meminta {$quantity} kamar"
+        ]);
     }
 }

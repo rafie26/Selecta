@@ -90,16 +90,10 @@
                                             <div>
                                                 <span class="font-medium">Check-in:</span><br>
                                                 {{ $booking->visit_date->format('d M Y') }}
-                                                @if($booking->check_in_time)
-                                                    <br><span class="text-blue-600 font-medium">{{ $booking->check_in_time }}</span>
-                                                @endif
                                             </div>
                                             <div>
                                                 <span class="font-medium">Check-out:</span><br>
                                                 {{ $booking->check_out_date->format('d M Y') }}
-                                                @if($booking->check_out_time)
-                                                    <br><span class="text-blue-600 font-medium">{{ $booking->check_out_time }}</span>
-                                                @endif
                                             </div>
                                             <div>
                                                 <span class="font-medium">Durasi:</span><br>
@@ -110,18 +104,6 @@
                                                 <span class="font-medium">Tanggal Kunjungan:</span><br>
                                                 {{ $booking->visit_date->format('d M Y') }}
                                             </div>
-                                            @if($booking->check_in_time)
-                                                <div>
-                                                    <span class="font-medium">Check-in:</span><br>
-                                                    <span class="text-green-600 font-medium">{{ $booking->check_in_time }}</span>
-                                                </div>
-                                            @endif
-                                            @if($booking->check_out_time)
-                                                <div>
-                                                    <span class="font-medium">Check-out:</span><br>
-                                                    <span class="text-green-600 font-medium">{{ $booking->check_out_time }}</span>
-                                                </div>
-                                            @endif
                                         @endif
                                     </div>
 
@@ -167,23 +149,6 @@
                                                     class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                                 <i class="fas fa-credit-card mr-1"></i> Bayar Sekarang
                                             </button>
-                                        @elseif($booking->payment_status === 'paid')
-                                            <!-- Check-in/out Time Buttons -->
-                                            @if(!$booking->check_in_time)
-                                                <button data-booking-id="{{ $booking->id }}" 
-                                                        onclick="setCheckInTime(this.dataset.bookingId)" 
-                                                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                    <i class="fas fa-sign-in-alt mr-1"></i> Set Check-in
-                                                </button>
-                                            @endif
-                                            
-                                            @if($booking->check_in_time && !$booking->check_out_time)
-                                                <button data-booking-id="{{ $booking->id }}" 
-                                                        onclick="setCheckOutTime(this.dataset.bookingId)" 
-                                                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                    <i class="fas fa-sign-out-alt mr-1"></i> Set Check-out
-                                                </button>
-                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -224,57 +189,6 @@
     </div>
 </div>
 
-<!-- Check-in Time Modal -->
-<div id="checkInModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Set Waktu Check-in</h3>
-            <form id="checkInForm">
-                <div class="mb-4">
-                    <label for="checkInTime" class="block text-sm font-medium text-gray-700 mb-2">Waktu Check-in</label>
-                    <input type="time" id="checkInTime" name="check_in_time" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="closeCheckInModal()" 
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                        Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Check-out Time Modal -->
-<div id="checkOutModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Set Waktu Check-out</h3>
-            <form id="checkOutForm">
-                <div class="mb-4">
-                    <label for="checkOutTime" class="block text-sm font-medium text-gray-700 mb-2">Waktu Check-out</label>
-                    <input type="time" id="checkOutTime" name="check_out_time" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="closeCheckOutModal()" 
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                        Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
- </div>
 
  <script src="{{ config('midtrans.snap_url') }}" data-client-key="{{ config('midtrans.client_key') }}"></script>
  <script>
@@ -341,108 +255,6 @@
          alert('Terjadi kesalahan saat memproses pembayaran.');
      });
  }
-
-
- function setCheckInTime(bookingId) {
-    currentBookingId = bookingId;
-    document.getElementById('checkInModal').classList.remove('hidden');
-    // Set current time as default
-    const now = new Date();
-    const timeString = now.toTimeString().slice(0, 5);
-    document.getElementById('checkInTime').value = timeString;
-}
-
-function setCheckOutTime(bookingId) {
-    currentBookingId = bookingId;
-    document.getElementById('checkOutModal').classList.remove('hidden');
-    // Set current time as default
-    const now = new Date();
-    const timeString = now.toTimeString().slice(0, 5);
-    document.getElementById('checkOutTime').value = timeString;
-}
-
-function closeCheckInModal() {
-    document.getElementById('checkInModal').classList.add('hidden');
-    currentBookingId = null;
-}
-
-function closeCheckOutModal() {
-    document.getElementById('checkOutModal').classList.add('hidden');
-    currentBookingId = null;
-}
-
-// Handle check-in form submission
-document.getElementById('checkInForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    fetch(`/riwayat-pemesanan/${currentBookingId}/check-in-time`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('Terjadi kesalahan. Silakan coba lagi.');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan. Silakan coba lagi.');
-    });
-    
-    closeCheckInModal();
-});
-
-// Handle check-out form submission
-document.getElementById('checkOutForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    fetch(`/riwayat-pemesanan/${currentBookingId}/check-out-time`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('Terjadi kesalahan. Silakan coba lagi.');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan. Silakan coba lagi.');
-    });
-    
-    closeCheckOutModal();
-});
-
-// Close modals when clicking outside
-window.onclick = function(event) {
-    const checkInModal = document.getElementById('checkInModal');
-    const checkOutModal = document.getElementById('checkOutModal');
-    
-    if (event.target === checkInModal) {
-        closeCheckInModal();
-    }
-    if (event.target === checkOutModal) {
-        closeCheckOutModal();
-    }
-}
 
 // Back button function
 function goBack() {

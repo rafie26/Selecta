@@ -110,6 +110,12 @@ Route::prefix('hotels')->name('hotels.')->group(function () {
     Route::get('/rooms', [HotelController::class, 'getRooms'])->name('rooms');
     Route::get('/{id}', [HotelController::class, 'show'])->name('show');
     
+    // Availability check routes (public)
+    Route::post('/check-availability', [HotelController::class, 'checkAvailability'])->name('check-availability');
+    Route::get('/unavailable-dates', [HotelController::class, 'getUnavailableDates'])->name('unavailable-dates');
+    Route::get('/room-availability', [HotelController::class, 'getRoomAvailability'])->name('room-availability');
+    Route::post('/validate-availability', [HotelController::class, 'validateAvailability'])->name('validate-availability');
+    
     // Protected routes (require authentication)
     Route::middleware('auth')->group(function () {
         Route::post('/book', [HotelController::class, 'bookRoom'])->name('book');

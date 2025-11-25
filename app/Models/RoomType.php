@@ -85,16 +85,18 @@ class RoomType extends Model
 
         // Hitung jumlah kamar yang sudah terisi oleh booking hotel yang SUDAH DIBAYAR
         // Rentang tanggal yang dianggap terisi adalah [check_in_date, check_out_date)
+        // Dua interval overlap jika: booking.check_in_date < requested_check_out
+        // DAN booking.check_out_date > requested_check_in
         $bookedRooms = $this->roomBookings()
             ->whereHas('booking', function ($query) {
                 $query->where('booking_type', 'hotel')
                       ->where('payment_status', 'paid');
             })
             ->where(function ($query) use ($checkIn, $checkOut) {
-                // Interval overlap: booking.check_in_date < requested_check_out
-                // dan booking.check_out_date > requested_check_in
-                $query->where('check_in_date', '<', $checkOut->toDateString())
-                      ->where('check_out_date', '>', $checkIn->toDateString());
+                // Interval overlap detection:
+                // Booking overlap jika: booking_check_in < requested_check_out AND booking_check_out > requested_check_in
+                $query->whereDate('check_in_date', '<', $checkOut->toDateString())
+                      ->whereDate('check_out_date', '>', $checkIn->toDateString());
             })
             ->sum('number_of_rooms');
 

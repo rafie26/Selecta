@@ -2359,7 +2359,7 @@ function updateSliderPosition(roomId) {
             document.getElementById('guest-modal').style.display = 'none';
         }
 
-        function searchRooms() {
+        async function searchRooms() {
             const checkinInput = document.getElementById('checkin');
             const checkoutInput = document.getElementById('checkout');
             
@@ -2381,7 +2381,49 @@ function updateSliderPosition(roomId) {
             updateDateDisplay();
             searchPerformed = true;
             document.getElementById('guest-dropdown').classList.remove('active');
-            renderRooms();
+            
+            // Fetch availability data dari API
+            await fetchAndRenderRooms(checkinInput.value, checkoutInput.value);
+        }
+
+        // Fungsi untuk fetch data ketersediaan kamar dari API
+        async function fetchAndRenderRooms(checkIn, checkOut) {
+            try {
+                const response = await fetch('/hotels/check-availability', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        check_in: checkIn,
+                        check_out: checkOut,
+                        guests: guestData.adults + guestData.children
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.room_types) {
+                    // Update rooms dengan data ketersediaan dari API
+                    rooms = rooms.map(room => {
+                        const apiRoom = data.room_types.find(r => r.id === room.id);
+                        if (apiRoom) {
+                            return {
+                                ...room,
+                                available: apiRoom.available_rooms,
+                                is_available: apiRoom.is_available
+                            };
+                        }
+                        return room;
+                    });
+                }
+                
+                renderRooms();
+            } catch (error) {
+                console.error('Error fetching room availability:', error);
+                renderRooms();
+            }
         }
 
         function handleDateChange() {
@@ -2405,8 +2447,55 @@ function updateSliderPosition(roomId) {
             
             updateDateDisplay();
             
-            if (searchPerformed) {
-                renderRooms();
+            // Fetch dan render kamar dengan data ketersediaan terbaru
+            if (searchPerformed && checkinInput.value && checkoutInput.value) {
+                fetchAndRenderRooms(checkinInput.value, checkoutInput.value);
+            }
+        }
+
+        // Fungsi untuk menampilkan notifikasi ketersediaan kamar saat tanggal dipilih
+        async function checkAvailabilityNotification(checkIn, checkOut) {
+            try {
+                const response = await fetch('/hotels/check-availability', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        check_in: checkIn,
+                        check_out: checkOut,
+                        guests: guestData.adults + guestData.children
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.room_types && data.room_types.length > 0) {
+                    // Hitung total kamar yang tersedia
+                    let totalAvailable = 0;
+                    let availabilityMessage = '';
+                    
+                    data.room_types.forEach(room => {
+                        if (room.is_available) {
+                            totalAvailable += room.available_rooms;
+                            availabilityMessage += `${room.name}: ${room.available_rooms} kamar tersedia\n`;
+                        }
+                    });
+                    
+                    if (totalAvailable > 0) {
+                        // Tampilkan notifikasi dengan detail ketersediaan
+                        const message = `✓ Kamar tersedia untuk tanggal yang dipilih:\n${availabilityMessage}`;
+                        console.log(message);
+                        // Bisa ditambahkan visual indicator di UI jika diperlukan
+                    } else {
+                        showToast('Maaf, tidak ada kamar yang tersedia untuk tanggal yang dipilih', 'error');
+                    }
+                } else {
+                    showToast('Maaf, tidak ada kamar yang tersedia untuk tanggal yang dipilih', 'error');
+                }
+            } catch (error) {
+                console.error('Error checking availability:', error);
             }
         }
 
@@ -2445,8 +2534,6 @@ function updateSliderPosition(roomId) {
                 confirmBtn.innerHTML = originalContent;
                 confirmBtn.disabled = false;
                 closeGuestModal();
-                
-                showToast(`Pemesanan berhasil! ID: ${bookingId}`);
                 
                 cart = [];
                 updateCart();
