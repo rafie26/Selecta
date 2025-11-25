@@ -31,11 +31,15 @@ class GoogleController extends Controller
             $user = User::where('email', $googleUser->getEmail())->first();
             
             if ($user) {
-                // Update Google ID dan avatar jika user sudah ada
-                $user->update([
-                    'google_id' => $googleUser->getId(),
-                    'avatar' => $googleUser->getAvatar(),
-                ]);
+                // Update Google ID, tapi hanya update avatar jika user belum punya avatar custom
+                $updateData = ['google_id' => $googleUser->getId()];
+                
+                // Hanya update avatar jika user belum punya avatar atau avatar adalah URL Google
+                if (!$user->avatar || filter_var($user->avatar, FILTER_VALIDATE_URL)) {
+                    $updateData['avatar'] = $googleUser->getAvatar();
+                }
+                
+                $user->update($updateData);
             } else {
                 // Buat user baru
                 $user = User::create([

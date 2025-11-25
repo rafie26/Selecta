@@ -17,6 +17,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BookingHistoryController;
 use App\Http\Controllers\PetugasLoketController;
 use App\Http\Controllers\PetugasHotelController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,8 +70,11 @@ Route::get('/email/verify/{id}/{token}', [AuthController::class, 'verifyEmail'])
 // Authenticated routes (perlu login)
 Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
-    Route::put('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
+    
+    // Profile routes
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
     // Booking (perlu login)
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');

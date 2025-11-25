@@ -64,13 +64,8 @@ class User extends Authenticatable
      */
     public function getAvatarAttribute($value)
     {
-        // If user has Google avatar, return it
-        if ($value && filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-        
-        // Generate initial avatar for manual registration
-        return null;
+        // Return the avatar value (either Google URL or uploaded file path)
+        return $value;
     }
 
     /**

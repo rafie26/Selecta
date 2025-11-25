@@ -661,9 +661,12 @@
                 <!-- User is logged in - show avatar with dropdown -->
                 <div class="user-menu">
                     <div class="user-avatar-container" onclick="toggleProfileDropdown()">
-                        @if(Auth::user()->avatar)
+                        @if(Auth::user()->avatar && filter_var(Auth::user()->avatar, FILTER_VALIDATE_URL))
                             <!-- Google profile picture -->
                             <img src="{{ Auth::user()->avatar }}" alt="Profile" class="user-avatar">
+                        @elseif(Auth::user()->avatar)
+                            <!-- Uploaded profile picture -->
+                            <img src="{{ Storage::url(Auth::user()->avatar) }}" alt="Profile" class="user-avatar">
                         @else
                             <!-- Initial avatar for manual registration -->
                             <div class="user-avatar-initial">{{ Auth::user()->initials }}</div>
@@ -674,18 +677,14 @@
                     
                     <!-- Dropdown Menu -->
                     <div class="profile-dropdown" id="profileDropdown">
-                        <a href="{{ route('profile') }}" class="dropdown-item">
+                        <a href="{{ route('profile.show') }}" class="dropdown-item">
                             <i class="fas fa-user"></i>
-                            <span>Lihat Profil</span>
+                            <span>Profil Saya</span>
                         </a>
                         <a href="{{ route('booking-history.index') }}" class="dropdown-item">
                             <i class="fas fa-history"></i>
                             <span>Riwayat Pemesanan</span>
                         </a>
-                        <div class="dropdown-item">
-                            <i class="fas fa-cog"></i>
-                            <span>Pengaturan</span>
-                        </div>
                         <div class="dropdown-divider"></div>
                         <form method="POST" action="{{ route('logout') }}" onsubmit="handleLogout(event)">
                             @csrf
